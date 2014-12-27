@@ -267,7 +267,7 @@ namespace taiyuanhitech.TGFCSpiderman
 
         public static string ChangePageIndexInDescription(this string desc, int newPageIndex)
         {
-            var re = new Regex(@"^第[ \d]{5}页");
+            var re = new Regex(@"^第[ \d]{4}页");
             return re.Replace(desc, string.Format("第{0, 4}页", newPageIndex));
         }
 
