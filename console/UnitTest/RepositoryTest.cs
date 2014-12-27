@@ -84,6 +84,7 @@ namespace UnitTest
                 ThreadId = postCreatedByBob.ThreadId,
                 Order = postCreatedByBob.Order,
                 Title = "title edited",
+                UserName = "test user",
                 HtmlContent = "body edited.",
                 CreateDate = postCreatedByBob.CreateDate,
                 ModifyDate = postCreatedByBob.CreateDate.AddHours(2),
