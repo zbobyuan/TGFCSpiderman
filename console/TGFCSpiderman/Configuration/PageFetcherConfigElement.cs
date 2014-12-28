@@ -29,7 +29,7 @@ namespace taiyuanhitech.TGFCSpiderman.Configuration
             set { this["timeout"] = value; }
         }
 
-        [ConfigurationProperty("user-agent", IsRequired = false)]
+        [ConfigurationProperty("user-agent", DefaultValue = "Opera/9.80 (Windows NT 5.1) Presto/2.12.388 Version/12.16", IsRequired = false)]
         public string UserAgent
         {
             get { return (string)this["user-agent"]; }

@@ -15,5 +15,11 @@ namespace taiyuanhitech.TGFCSpiderman.Configuration
             get { return (PageFetcherConfigElement) this["pageFetcher"]; }
             set { this["pageFetcher"] = value; }
         }
+        [ConfigurationProperty("girls")]
+        public AuthConfigElement AuthElement
+        {
+            get { return (AuthConfigElement)this["girls"]; }
+            set { this["girls"] = value; }
+        }
     }
 }

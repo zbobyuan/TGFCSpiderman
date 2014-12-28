@@ -17,4 +17,10 @@ namespace taiyuanhitech.TGFCSpiderman.Configuration
         int TimeoutInSeconds { get; set; }
         string UserAgent { get; set; }
     }
+
+    public interface IAuthConfig
+    {
+        string UserName { get; set; }
+        string Password { get; set; }
+    }
 }

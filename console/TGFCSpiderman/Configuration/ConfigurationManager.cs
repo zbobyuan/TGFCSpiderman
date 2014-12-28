@@ -10,12 +10,7 @@ namespace taiyuanhitech.TGFCSpiderman.Configuration
 
         public ConfigurationManager()
         {
-#if DEBUG
             var applicationName = Environment.GetCommandLineArgs()[0];
-#else 
-            var applicationName = Environment.GetCommandLineArgs()[0]+ ".exe";
-#endif
-
             var exePath = System.IO.Path.Combine(Environment.CurrentDirectory, applicationName);
             _config = System.Configuration.ConfigurationManager.OpenExeConfiguration(exePath);
         }
@@ -47,6 +42,32 @@ namespace taiyuanhitech.TGFCSpiderman.Configuration
                 configSection.PageFetcherElement.SigninRetryTimes = c.SigninRetryTimes;
                 configSection.PageFetcherElement.TimeoutInSeconds = c.TimeoutInSeconds;
                 configSection.PageFetcherElement.UserAgent = c.UserAgent;
+            }
+
+            _config.Save(ConfigurationSaveMode.Modified);
+            System.Configuration.ConfigurationManager.RefreshSection(SectionName);
+        }
+
+        public IAuthConfig GetAuthConfig()
+        {
+            var section = (TGFCSpidermanSection)_config.GetSection(SectionName);
+            return section != null ? section.AuthElement : new AuthConfigElement();
+        }
+
+        public void SaveAuthConfig(IAuthConfig c)
+        {
+            var configSection = (TGFCSpidermanSection)_config.GetSection(SectionName);
+            if (configSection == null)
+            {
+                configSection = new TGFCSpidermanSection();
+                configSection.AuthElement.UserName = c.UserName;
+                configSection.AuthElement.Password = c.Password;
+                _config.Sections.Add(SectionName, configSection);
+            }
+            else
+            {
+                configSection.AuthElement.UserName = c.UserName;
+                configSection.AuthElement.Password = c.Password;
             }
 
             _config.Save(ConfigurationSaveMode.Modified);

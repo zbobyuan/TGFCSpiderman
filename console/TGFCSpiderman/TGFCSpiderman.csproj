@@ -94,6 +94,7 @@
     </Reference>
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Runtime.Caching" />
+    <Reference Include="System.Security" />
     <Reference Include="System.Web" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -112,6 +113,7 @@
     <Compile Include="CommonLib\Revision.cs" />
     <Compile Include="CommonLib\ThreadHeader.cs" />
     <Compile Include="ComponentFactory.cs" />
+    <Compile Include="Configuration\AuthConfigElement.cs" />
     <Compile Include="Configuration\ConfigurationManager.cs" />
     <Compile Include="Configuration\IConfiguration.cs" />
     <Compile Include="Configuration\PageFetcherConfigElement.cs" />

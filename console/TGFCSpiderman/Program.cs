@@ -1,33 +1,53 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.FSharp.Core;
+using taiyuanhitech.TGFCSpiderman.Configuration;
 
 namespace taiyuanhitech.TGFCSpiderman
 {
     internal class Program
     {
+        class AuthConfig : IAuthConfig
+        {
+            public string UserName { get; set; }
+            public string Password { get; set; }
+        }
+
         private static string _userName;
         private static string _password;
         private static void Main(string[] args)
         {
-            AskUserName();
-            AskPassword();
-
             ComponentFactory.Startup();
-            bool signedIn = false;
 
+            var configurationManager = new ConfigurationManager();
+            configurationManager.SavePageFetcherConfig(configurationManager.GetPageFetcherConfig());
+            var authConfig = configurationManager.GetAuthConfig();
+            _userName = authConfig.UserName;
+            _password = authConfig.Password;
+
+            bool signedIn = false, saveAuthInfo = false;
             while (!signedIn)
             {
+                if (string.IsNullOrEmpty(_userName) || string.IsNullOrEmpty(_password))
+                {
+                    AskUserName();
+                    AskPassword();
+                    saveAuthInfo = true;
+                }
                 try
                 {
                     ComponentFactory.GetPageFetcher().Signin(_userName, _password);
                     signedIn = true;
+                    if (saveAuthInfo)
+                        configurationManager.SaveAuthConfig(new AuthConfig { UserName = _userName, Password = _password });
                 }
                 catch (UserNameOrPasswordException)
                 {
                     Console.WriteLine("用户名或密码错误，请重新输入。");
                     AskUserName();
                     AskPassword();
+                    saveAuthInfo = true;
                 }
                 catch (CannotSigninException)
                 {
