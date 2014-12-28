@@ -112,6 +112,10 @@
     <Compile Include="CommonLib\Revision.cs" />
     <Compile Include="CommonLib\ThreadHeader.cs" />
     <Compile Include="ComponentFactory.cs" />
+    <Compile Include="Configuration\ConfigurationManager.cs" />
+    <Compile Include="Configuration\IConfiguration.cs" />
+    <Compile Include="Configuration\PageFetcherConfigElement.cs" />
+    <Compile Include="Configuration\TGFCSpidermanSection.cs" />
     <Compile Include="IoC\IoCContainer.cs" />
     <Compile Include="IPageFetcher.cs" />
     <Compile Include="IPageProcessor.cs" />
