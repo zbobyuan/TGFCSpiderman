@@ -14,6 +14,9 @@ namespace taiyuanhitech.TGFCSpiderman
         private static readonly Regex ThreadIdRegex = new Regex(@"tid=(\d+)");
         private static readonly Regex PostIdRegex = new Regex(@"tid=(\d+)");
         private static readonly Regex PageIndexRegex = new Regex(@"page=(\d+)");
+        private static readonly Regex RatingPeqNRegex = new Regex(@"\+(\d+)/-\d+=\d+");
+        private static readonly Regex RatingPositiveRegex = new Regex(@"\+(\d+)/");
+        private static readonly Regex RatingNegativeRegex = new Regex(@"/-(\d+)=");
 
         public static int GetThreadId(this string url)
         {
@@ -59,6 +62,39 @@ namespace taiyuanhitech.TGFCSpiderman
             {
                 return null;
             }
+        }
+
+        public static Tuple<int, int> GetRatings(this HtmlNode messageNode)
+        {
+            int positiveRate = 0, negativeRate = 0;
+            var nextTextNodeOfMessageNode = messageNode.GetNextSibling2("#text");
+            if (nextTextNodeOfMessageNode != null && nextTextNodeOfMessageNode.InnerText.StartsWith("评分记录("))
+            {
+                var text = nextTextNodeOfMessageNode.InnerText;
+                var match = RatingPeqNRegex.Match(text);
+                if (match.Success)
+                {//正负相等
+                    positiveRate = negativeRate = int.Parse(match.Groups[1].Value);
+                }
+                else
+                {
+                    if (text.EndsWith("+"))
+                    {
+                        var bNode = nextTextNodeOfMessageNode.GetNextSibling2("b");
+                        positiveRate = int.Parse(bNode.InnerText);
+                        var nextText = bNode.GetNextSibling2("#text").InnerText;
+                        negativeRate = int.Parse(RatingNegativeRegex.Match(nextText).Groups[1].Value);
+                    }
+                    else if (text.EndsWith("-"))
+                    {
+                        var bNode = nextTextNodeOfMessageNode.GetNextSibling2("b");
+                        negativeRate = int.Parse(bNode.InnerText);
+                        positiveRate = int.Parse(RatingPositiveRegex.Match(text).Groups[1].Value);
+                    }
+                }
+            }
+
+            return new Tuple<int, int>(positiveRate, negativeRate);
         }
     }
 
@@ -181,7 +217,7 @@ namespace taiyuanhitech.TGFCSpiderman
                 var firstPostHtmlContent = messageNode.InnerHtml;
                 var modifyDate = GetModifyDate(messageNode, thread.UserName);
                 int pid = messageNode.GetNextSibling2("a").GetAttributeValue("href").GetPostId();
-
+                var ratings = messageNode.GetRatings();
                 var post = new Post
                 {
                     Id = pid,
@@ -191,7 +227,9 @@ namespace taiyuanhitech.TGFCSpiderman
                     Order = 1,
                     HtmlContent = firstPostHtmlContent,
                     CreateDate = createDate,
-                    ModifyDate = modifyDate
+                    ModifyDate = modifyDate,
+                    PositiveRate = ratings.Item1,
+                    NegativeRate = ratings.Item2,
                 };
                 //TODO:set rating 
                 thread.Posts.Add(post);
@@ -232,6 +270,9 @@ namespace taiyuanhitech.TGFCSpiderman
                         post.HtmlContent = replyBodyNode.InnerHtml;
 
                         post.ModifyDate = GetModifyDate(replyBodyNode, post.UserName);
+                        var ratings = replyBodyNode.GetRatings();
+                        post.PositiveRate = ratings.Item1;
+                        post.NegativeRate = ratings.Item2;
                         //TODO:set rating 
                         return post;
                     });
