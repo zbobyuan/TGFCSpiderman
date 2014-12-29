@@ -1,6 +1,7 @@
 ﻿using System;
 using taiyuanhitech.TGFCSpiderman.IoC;
 using taiyuanhitech.TGFCSpiderman.Persistence;
+using taiyuanhitech.TGFCSpiderman.Configuration;
 
 namespace taiyuanhitech.TGFCSpiderman
 {
@@ -22,7 +23,7 @@ namespace taiyuanhitech.TGFCSpiderman
 
         public static void Startup()
         {
-            Startup(()=>new PageFetcher(), () => new PageProcessor(), () => new PostRepository());
+            Startup(() => new PageFetcher(new ConfigurationManager().GetPageFetcherConfig()), () => new PageProcessor(), () => new PostRepository());
         }
 
         private static IPageFetcher _pageFetcher;

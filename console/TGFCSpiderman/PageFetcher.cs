@@ -6,17 +6,19 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using taiyuanhitech.TGFCSpiderman.CommonLib;
+using taiyuanhitech.TGFCSpiderman.Configuration;
 
 namespace taiyuanhitech.TGFCSpiderman
 {
     internal class PageFetcher : IPageFetcher
     {
-        private const int SigninMaxRetryTimes = 3;//TODO:configurable
+        private readonly IPageFetcherConfig _config;
         private readonly HttpClient _httpClient;
         private readonly ManualResetEvent _signinWaitHandle = new ManualResetEvent(true);
 
-        public PageFetcher()
+        public PageFetcher(IPageFetcherConfig config)
         {
+            _config = config;
             var handler = new HttpClientHandler
             {
                 CookieContainer = new CookieContainer(),
@@ -26,11 +28,9 @@ namespace taiyuanhitech.TGFCSpiderman
             _httpClient = new HttpClient(handler)
             {
                 BaseAddress = new Uri("http://wap.tgfcer.com/"),
-                Timeout = TimeSpan.FromSeconds(20) //_httpClient.GetAsync() throws TaskCanceledException
-                //TODO:configurable
+                Timeout = TimeSpan.FromSeconds(_config.TimeoutInSeconds) //_httpClient.GetAsync() throws TaskCanceledException
             };
-            _httpClient.DefaultRequestHeaders.Add("user-agent", "Opera/9.80 (Windows NT 5.1) Presto/2.12.388 Version/12.16");
-            //TODO:configurable
+            _httpClient.DefaultRequestHeaders.Add("user-agent", _config.UserAgent);
         }
 
         public async Task<PageFetchResult> Fetch(PageFetchRequest request)
@@ -93,7 +93,7 @@ namespace taiyuanhitech.TGFCSpiderman
                 });
 
                 int retryTimes = 0;
-                while (!signedIn && retryTimes < SigninMaxRetryTimes)
+                while (!signedIn && retryTimes < _config.SigninRetryTimes)
                 {
                     try
                     {
