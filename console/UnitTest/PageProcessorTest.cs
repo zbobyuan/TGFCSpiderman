@@ -153,6 +153,53 @@ namespace UnitTest
             Assert.AreEqual(2, result.Result.Posts[1].Order);
         }
 
+        [TestMethod]
+        [DeploymentItem("HtmlContents\\FirstPostNegativeOnly.htm")]
+        [DeploymentItem("HtmlContents\\FirstPostPositiveOnly.htm")]
+        [DeploymentItem("HtmlContents\\FirstPostPositiveEqualsNegative.htm")]
+        [DeploymentItem("HtmlContents\\FirstPostPositiveLessThenNegative.htm")]
+        public void RatingTest()
+        {
+            var processor = new PageProcessor();
+            var thread = processor.ProcessThreadPage(new MillRequest
+            {
+                Url = "url",
+                HtmlContent = File.ReadAllText("FirstPostPositiveEqualsNegative.htm")
+            }).Result;
+
+            Assert.AreEqual(5, thread.Posts[0].PositiveRate);
+            Assert.AreEqual(5, thread.Posts[0].NegativeRate);
+            Assert.AreEqual(0, thread.Posts[1].PositiveRate);
+            Assert.AreEqual(0, thread.Posts[1].NegativeRate);
+
+            thread = processor.ProcessThreadPage(new MillRequest
+            {
+                Url = "url",
+                HtmlContent = File.ReadAllText("FirstPostPositiveOnly.htm")
+            }).Result;
+            Assert.AreEqual(0, thread.Posts[0].NegativeRate);
+            Assert.AreEqual(52, thread.Posts[0].PositiveRate);
+            Assert.AreEqual(1, thread.Posts[18].PositiveRate);
+            Assert.AreEqual(0, thread.Posts[18].NegativeRate);
+
+            thread = processor.ProcessThreadPage(new MillRequest
+            {
+                Url = "url",
+                HtmlContent = File.ReadAllText("FirstPostNegativeOnly.htm")
+            }).Result;
+            Assert.AreEqual(617, thread.Posts[0].NegativeRate);
+            Assert.AreEqual(0, thread.Posts[0].PositiveRate);
+
+            thread = processor.ProcessThreadPage(new MillRequest
+            {
+                Url = "url",
+                HtmlContent = File.ReadAllText("FirstPostPositiveLessThenNegative.htm")
+            }).Result;
+            Assert.AreEqual(800, thread.Posts[0].NegativeRate);
+            Assert.AreEqual(6, thread.Posts[0].PositiveRate);
+        }
+
+        #region private methods
         private HtmlNode CreateHtmlNode(string htmlFileName)
         {
             string text = File.ReadAllText(htmlFileName);
@@ -160,5 +207,6 @@ namespace UnitTest
             htmlDoc.LoadHtml(HttpUtility.HtmlDecode(text));
             return htmlDoc.DocumentNode;
         }
+        #endregion
     }
 }
