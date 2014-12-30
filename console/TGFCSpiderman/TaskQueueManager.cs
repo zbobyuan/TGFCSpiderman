@@ -24,6 +24,7 @@ namespace taiyuanhitech.TGFCSpiderman
         private readonly PostSaveJobRunner _pageSaveJobRunner;
         private string _userName;
         private string _password;
+        private DateTime _expirationDate;
 
         static TaskQueueManager()
         {
@@ -47,6 +48,7 @@ namespace taiyuanhitech.TGFCSpiderman
 
         public void Run(string userName, string password, DateTime expirationDate)
         {
+            _expirationDate = expirationDate;
             _userName = userName;
             _password = password;
             var stopwatch = new Stopwatch();
@@ -198,7 +200,7 @@ namespace taiyuanhitech.TGFCSpiderman
             if (status == MillStatus.NotSignedIn)
             {
                 _pageFetcher.Signin(_userName, _password);
-                _pageFetchJobRunner.EnqueueJob(new PageFetchRequest(threadPage.Url, "postxxxxxxxxxxxxxxxx"));//TODO:fix it
+                _pageFetchJobRunner.EnqueueJob(new PageFetchRequest(threadPage.Url, "post not signed in"));
                 return;
             }
             if (status == MillStatus.PermissionDenied)
@@ -207,7 +209,7 @@ namespace taiyuanhitech.TGFCSpiderman
             }
             if (status == MillStatus.FormatError)
             {
-                Console.WriteLine("thread page html 格式发生变化，无法查看。程序正在关闭...");
+                Console.WriteLine("主题页格式发生变化，无法查看。程序正在关闭...");
                 _pageFetchJobRunner.Stop();
                 _pageMillJobRunner.Stop();
                 _pageSaveJobRunner.Stop();
@@ -216,11 +218,17 @@ namespace taiyuanhitech.TGFCSpiderman
             {
                 Console.WriteLine(threadPage.HumanReadableDescription.ChangeStatusInDescription("处理完成"));
                 _pageSaveJobRunner.EnqueueRange(threadPage.Result.Posts);
-                if (threadPage.NextPageUrl != null)
+                if (threadPage.NextPageUrl == null) return;
+                if (threadPage.NextPageUrl.GetPageIndex() != "1")
                 {
-                    _pageFetchJobRunner.EnqueueJob(new PageFetchRequest(threadPage.NextPageUrl,
-                        threadPage.HumanReadableDescription.ChangePageIndexInDescription(int.Parse(threadPage.NextPageUrl.GetPageIndex()))));
+                    var oldestPost = threadPage.Result.Posts.First();
+                    if (oldestPost.CreateDate < _expirationDate)
+                    {
+                        threadPage.NextPageUrl = threadPage.NextPageUrl.ChangePageIndex(1);
+                    }
                 }
+                _pageFetchJobRunner.EnqueueJob(new PageFetchRequest(threadPage.NextPageUrl,
+                    threadPage.HumanReadableDescription.ChangePageIndexInDescription(int.Parse(threadPage.NextPageUrl.GetPageIndex()))));
             }
         }
 
