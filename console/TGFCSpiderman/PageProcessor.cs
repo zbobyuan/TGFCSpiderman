@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Web;
+using CsQuery;
 using HtmlAgilityPack;
 using ScrapySharp.Extensions;
 using taiyuanhitech.TGFCSpiderman.CommonLib;
@@ -105,17 +106,15 @@ namespace taiyuanhitech.TGFCSpiderman
             if (request == null || string.IsNullOrWhiteSpace(request.HtmlContent))
                 throw new ArgumentNullException("request");
 
-            var htmlDoc = new HtmlDocument();
-            htmlDoc.LoadHtml(HttpUtility.HtmlDecode(request.HtmlContent));
-            var rootNode = htmlDoc.DocumentNode;
-            EnsureSignedIn(rootNode, request);
+            var root = CQ.CreateDocument(request.HtmlContent);
+            EnsureSignedIn(root, request);
 
-            var titles = rootNode.CssSelect("span.title").ToArray();
-            var authors = rootNode.CssSelect("span.author").ToArray();
+            var titles = root.Select("span.title");
+            var authors = root.Select("span.author");
             if (titles.Length != authors.Length)
-                throw new ProcessFaultException(request, "title和author元素个数不一致。");
+                throw new ProcessFaultException(request, "forum page title和author元素个数不一样。");
             if (titles.Length == 0)
-                throw new ProcessFaultException(request, "没有找到title和author元素。");
+                throw new ProcessFaultException(request, "forum page 没有找到title和author元素。");
 
             var headers = new List<ThreadHeader>(titles.Length);
 
@@ -124,17 +123,17 @@ namespace taiyuanhitech.TGFCSpiderman
                 var titleNode = titles[i];
                 var authorNode = authors[i];
 
-                var titleAnchor = titleNode.CssSelect("a").FirstOrDefault();
+                var titleAnchor = titleNode.Cq().Find("a:first").FirstOrDefault();
                 if (titleAnchor == null)
                     throw new ProcessFaultException(request, string.Format("第{0}个title元素里面没有a元素。", i));
 
-                var url = titleAnchor.GetAttributeValue("href");
-                var titleText = titleAnchor.InnerText.Trim();
+                var url = titleAnchor["href"];
+                var titleText = titleAnchor.Cq().Text().Trim();
                 int threadId = url.GetThreadId();
                 if (0 == threadId)
-                    throw new ProcessFaultException(request, "无法从thread url中获取thread id。");
+                    throw new ProcessFaultException(request, string.Format("无法从第{0}个thread url中获取thread id。", i));
 
-                var authorText = authorNode.InnerText;
+                var authorText = authorNode.Cq().Text();
                 if (string.IsNullOrWhiteSpace(authorText))
                     throw new ProcessFaultException(request, string.Format("第{0}个author元素没有内容。", i));
                 var values = authorText.Split('/');
@@ -162,7 +161,7 @@ namespace taiyuanhitech.TGFCSpiderman
             return new MillResult<List<ThreadHeader>>
             {
                 Url = request.Url,
-                NextPageUrl = GetNextForumPageUrl(rootNode, request),
+                NextPageUrl = GetNextForumPageUrl(root, request),
                 Result = headers
             };
         }
@@ -324,6 +323,26 @@ namespace taiyuanhitech.TGFCSpiderman
             return dt;
         }
 
+        private void EnsureSignedIn(CQ root, MillRequest request)
+        {
+            var signedIn = true;
+            var footer = root.Select("div.wrap > div#footer").FirstOrDefault();
+            if (footer == null)
+                signedIn = false;
+            else
+            {
+                var anchorsInFooter = footer.Cq().Find("a");
+                if (anchorsInFooter.Any(link => link.Cq().Text() == "注册")
+                    || anchorsInFooter.Any(link => link.Cq().Text() == "登陆"))
+                {
+                    signedIn = false;
+                }
+            }
+
+            if (!signedIn)
+                throw new NotSignedInException(request);
+        }
+
         private void EnsureSignedIn(HtmlNode rootNode, MillRequest request)
         {
             var signedIn = true;
@@ -350,15 +369,14 @@ namespace taiyuanhitech.TGFCSpiderman
                 throw new PermissionDeniedException(request);
         }
 
-        private string GetNextForumPageUrl(HtmlNode rootNode, MillRequest request)
+        private string GetNextForumPageUrl(CQ root, MillRequest request)
         {
-            var currentPageIndexNode = rootNode.CssSelect("span.paging > span.s1").FirstOrDefault();
+            var currentPageIndexNode = root.Select("span.paging > span.s1").FirstOrDefault();
             if (currentPageIndexNode == null)
                 throw new ProcessFaultException(request, "找不到分页元素。");
 
-            var nextPageNode = currentPageIndexNode.GetNextSibling2("a");
-
-            return nextPageNode == null ? null : nextPageNode.GetAttributeValue("href");
+            var nextPageNode = currentPageIndexNode.Cq().Next("a").FirstOrDefault();
+            return nextPageNode == null ? null : nextPageNode["href"];
         }
 
         private string GetNextThreadPageUrl(MillRequest request, HtmlNode rootNode)
