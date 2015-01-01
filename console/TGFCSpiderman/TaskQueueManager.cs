@@ -15,7 +15,7 @@ namespace taiyuanhitech.TGFCSpiderman
         private const int InitialRetryInterval = 100;//TODO:configurable
         private const int ForumPageMaxRetryCount = 5;
         private const int ThreadPageMaxRetryCount = 3;
-        private const int MaxRetryInterval = InitialRetryInterval * (2 << 13);
+        private const int MaxRetryInterval = InitialRetryInterval * (2 << 10);
         private static readonly TaskQueueManager _inst;
         private readonly IPageFetcher _pageFetcher;
         private readonly IPageProcessor _pageProcessor;
@@ -26,6 +26,7 @@ namespace taiyuanhitech.TGFCSpiderman
         private string _password;
         private DateTime _expirationDate;
         private Dictionary<string, int> _retryCounter;
+        private readonly HashSet<int> _excludedThreadIds = new HashSet<int> {7041501,7018450, 6685754 };
 
         static TaskQueueManager()
         {
@@ -136,7 +137,7 @@ namespace taiyuanhitech.TGFCSpiderman
                         if (lastReplyDate < expirationDate)
                         {
                             //todo:找出确切的最晚的一个早于expirationDate的thread，处理这个thread及比它更晚（在threadHeaders中序号更小）的thread
-                            HandleThreads(threadHeasers);
+                            HandleThreads(threadHeasers.Where( t => !_excludedThreadIds.Contains(t.Id)));
                             return; //全处理完了，没了
                         }
                         else
