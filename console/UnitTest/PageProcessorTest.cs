@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Web;
-using HtmlAgilityPack;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MSTestExtensions;
 using taiyuanhitech.TGFCSpiderman;
@@ -14,23 +13,6 @@ namespace UnitTest
     [TestClass]
     public class PageProcessorTest
     {
-        [TestMethod]
-        [DeploymentItem("HtmlContents\\ForumPageFirst.htm")]
-        [DeploymentItem("HtmlContents\\ForumPageLast.htm")]
-        public void GetNextForumPageUrlTest()
-        {
-            var pageProcessor = new PageProcessor();
-            var privateObject = new PrivateObject(pageProcessor);
-
-            var page2Url =
-                (string) privateObject.Invoke("GetNextForumPageUrl", CreateHtmlNode("ForumPageFirst.htm"), null);
-            Assert.IsNotNull(page2Url);
-
-            object nextPageOfLastPageShouldBeNull = privateObject.Invoke("GetNextForumPageUrl",
-                CreateHtmlNode("ForumPageLast.htm"), null);
-            Assert.IsNull(nextPageOfLastPageShouldBeNull);
-        }
-
         [TestMethod]
         [DeploymentItem("HtmlContents\\ForumPageFirst.htm")]
         public void ProcessForumPageTest()
@@ -48,6 +30,10 @@ namespace UnitTest
             Assert.IsNotNull(millResult.Result);
             Assert.AreEqual(100, millResult.Result.Count);
             Assert.AreEqual(url.Replace("page=1", "page=2"), millResult.NextPageUrl);
+
+            var firstThreadHeader = millResult.Result.First();
+            Assert.AreEqual("fffhxy",firstThreadHeader.UserName);
+            Assert.AreEqual(5, firstThreadHeader.ReplyCount);
         }
 
         [TestMethod]
@@ -60,6 +46,18 @@ namespace UnitTest
             {
                 Url = "testme",
                 HtmlContent = File.ReadAllText("NotSignedIn.htm")
+            });
+        }
+        [TestMethod]
+        [DeploymentItem("HtmlContents\\PermissionDenied.htm")]
+        [ExpectedException(typeof(PermissionDeniedException))]
+        public void PermissionDeniedPageThrows()
+        {
+            var pageProcessor = new PageProcessor();
+            pageProcessor.ProcessThreadPage(new MillRequest
+            {
+                Url = "testme",
+                HtmlContent = File.ReadAllText("PermissionDenied.htm")
             });
         }
         [TestMethod]
@@ -95,8 +93,7 @@ namespace UnitTest
             var processor = new PageProcessor();
             MillResult<ForumThread> result = processor.ProcessThreadPage(new MillRequest
             {
-                Url =
-                    "index.php?action=thread&tid=7023798&vt=1&tp=100&pp=100&sc=1&vf=0&sm=0&iam=notop-nolight-noattach&css=default",
+                Url = "index.php?action=thread&tid=7023798&vt=1&tp=100&pp=100&sc=1&vf=0&sm=0&iam=notop-nolight-noattach&css=default",
                 HtmlContent = File.ReadAllText("ThreadPageNoReply.htm")
             });
             Assert.IsNull(result.NextPageUrl);
@@ -106,7 +103,7 @@ namespace UnitTest
             Assert.AreEqual(1, result.Result.Posts.Count);
             Assert.AreEqual("bobykid", result.Result.Posts[0].UserName);
             Assert.AreEqual(1, result.Result.Posts[0].Order);
-            Assert.AreEqual(7023798, result.Result.Posts[0].Id);
+            Assert.AreEqual(21010841, result.Result.Posts[0].Id);
             Assert.AreEqual(DateTime.Parse("2014-12-15 14:20"), result.Result.Posts[0].CreateDate);
         }
 
@@ -117,8 +114,7 @@ namespace UnitTest
             var processor = new PageProcessor();
             MillResult<ForumThread> result = processor.ProcessThreadPage(new MillRequest
             {
-                Url =
-                    "index.php?action=thread&tid=6834324&page=2&vt=1&tp=100&pp=100&sc=1&vf=0&sm=0&iam=notop-nolight-noattach&css=default",
+                Url = "index.php?action=thread&tid=6834324&page=2&vt=1&tp=100&pp=100&sc=1&vf=0&sm=0&iam=notop-nolight-noattach&css=default",
                 HtmlContent = File.ReadAllText("ThreadPage2nd.htm")
             });
 
@@ -198,15 +194,5 @@ namespace UnitTest
             Assert.AreEqual(800, thread.Posts[0].NegativeRate);
             Assert.AreEqual(6, thread.Posts[0].PositiveRate);
         }
-
-        #region private methods
-        private HtmlNode CreateHtmlNode(string htmlFileName)
-        {
-            string text = File.ReadAllText(htmlFileName);
-            var htmlDoc = new HtmlDocument();
-            htmlDoc.LoadHtml(HttpUtility.HtmlDecode(text));
-            return htmlDoc.DocumentNode;
-        }
-        #endregion
     }
 }

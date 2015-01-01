@@ -57,7 +57,7 @@ namespace taiyuanhitech.TGFCSpiderman
             stopwatch.Start();
             try
             {
-                var entryPointUrl = "index.php?action=forum&fid=25&vt=1&tp=100&pp=100&sc=1&vf=0&sm=0&iam=notop-nolight-noattach&css=default&page=2";
+                var entryPointUrl = "index.php?action=forum&fid=25&vt=1&tp=100&pp=100&sc=1&vf=0&sm=0&iam=notop-nolight-noattach&css=default&page=1";
                 for (; ; )
                 {
                     if (entryPointUrl == null)
@@ -192,7 +192,7 @@ namespace taiyuanhitech.TGFCSpiderman
             {//超时
                 Console.WriteLine(result.HumanReadableDescription.ChangeStatusInDescription("超时　　"));
             }
-            if (result.Error.StatusCode != HttpStatusCode.OK)
+            else if (result.Error.StatusCode != HttpStatusCode.OK)
             {//服务器返回错误信息
                 Console.WriteLine(result.HumanReadableDescription.ChangeStatusInDescription("请求错误"));
             }
@@ -222,8 +222,8 @@ namespace taiyuanhitech.TGFCSpiderman
             {
                 Console.WriteLine("主题页格式发生变化，无法查看。程序正在关闭...");
                 _pageFetchJobRunner.Stop();
-                _pageMillJobRunner.Stop();
                 _pageSaveJobRunner.Stop();
+                _pageMillJobRunner.Stop();
             }
             if (status == MillStatus.Success)
             {

@@ -12,7 +12,7 @@ namespace taiyuanhitech.TGFCSpiderman.JobQueue
         private readonly Queue<TRequest> _jobQueue = new Queue<TRequest>();
         private readonly object _queueLocker = new object();
         private readonly Thread _worker;
-        protected bool Shutdown = false;
+        protected bool Shutdown;
         private bool _running;
 
         protected JobRunner()
@@ -43,10 +43,11 @@ namespace taiyuanhitech.TGFCSpiderman.JobQueue
 
         public void EnqueueRange(IEnumerable<TRequest> jobs)
         {
+            if (Shutdown) return;
             if (_running) _idleWaitHandle.Reset();
             lock (_queueLocker)
             {
-                foreach (TRequest j in jobs)
+                foreach (var j in jobs)
                 {
                     _jobQueue.Enqueue(j);
                 }
@@ -56,9 +57,9 @@ namespace taiyuanhitech.TGFCSpiderman.JobQueue
 
         public void Stop()
         {
+            _running = false;
             Shutdown = true;
             _jobAvailableWaitHandle.Set();
-            _worker.Join(TimeSpan.FromSeconds(100));
         }
         protected abstract void ExecuteJobs(List<TRequest> jobs);
 
@@ -97,6 +98,7 @@ namespace taiyuanhitech.TGFCSpiderman.JobQueue
                     }
                 }
             }
+            _idleWaitHandle.Set();
         }
 
         private static IEnumerable<T> FromSingle<T>(T o)

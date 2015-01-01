@@ -4,8 +4,6 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Web;
 using CsQuery;
-using HtmlAgilityPack;
-using ScrapySharp.Extensions;
 using taiyuanhitech.TGFCSpiderman.CommonLib;
 
 namespace taiyuanhitech.TGFCSpiderman
@@ -13,11 +11,11 @@ namespace taiyuanhitech.TGFCSpiderman
     internal static class ProcessorExt
     {
         private static readonly Regex ThreadIdRegex = new Regex(@"tid=(\d+)");
-        private static readonly Regex PostIdRegex = new Regex(@"tid=(\d+)");
+        private static readonly Regex PostIdRegex = new Regex(@"pid=(\d+)");
         private static readonly Regex PageIndexRegex = new Regex(@"page=(\d+)");
         private static readonly Regex RatingPeqNRegex = new Regex(@"\+(\d+)/-\d+=\d+");
         private static readonly Regex RatingPositiveRegex = new Regex(@"\+(\d+)/");
-        private static readonly Regex RatingNegativeRegex = new Regex(@"/-(\d+)=");
+        private static readonly Regex RatingNegativeRegex = new Regex(@"^/-(\d+)=");
 
         public static int GetThreadId(this string url)
         {
@@ -42,36 +40,17 @@ namespace taiyuanhitech.TGFCSpiderman
             return matchs.Success ? matchs.Groups[1].Value : "1";
         }
 
-        public static HtmlNode GetPreviousSibling(this HtmlNode node, string name)
-        {
-            HtmlNode previous = null, current = node;
-            while (current.PreviousSibling != null && (previous = current.PreviousSibling).Name != name)
-            {
-                current = previous;
-            }
-
-            return previous;
-        }
-
-        public static HtmlNode GetNextSibling2(this HtmlNode node, string name)
-        {//fix GetNextSibling() in ScrapySharp
-            try
-            {
-                return node.GetNextSibling(name);
-            }
-            catch (NullReferenceException)
-            {
-                return null;
-            }
-        }
-
-        public static Tuple<int, int> GetRatings(this HtmlNode messageNode)
+        public static Tuple<int, int> GetRatings(this IDomObject messageNode)
         {
             int positiveRate = 0, negativeRate = 0;
-            var nextTextNodeOfMessageNode = messageNode.GetNextSibling2("#text");
-            if (nextTextNodeOfMessageNode != null && nextTextNodeOfMessageNode.InnerText.StartsWith("评分记录("))
+            var nextTextNodeOfMessageNode = messageNode.NextSibling;
+            if (nextTextNodeOfMessageNode == null) 
+                return new Tuple<int, int>(positiveRate, negativeRate);
+            nextTextNodeOfMessageNode = nextTextNodeOfMessageNode.NextSibling;
+            if (nextTextNodeOfMessageNode != null && nextTextNodeOfMessageNode.NodeType == NodeType.TEXT_NODE
+                && nextTextNodeOfMessageNode.NodeValue.StartsWith("评分记录("))
             {
-                var text = nextTextNodeOfMessageNode.InnerText;
+                var text = nextTextNodeOfMessageNode.Cq().Text();
                 var match = RatingPeqNRegex.Match(text);
                 if (match.Success)
                 {//正负相等
@@ -81,15 +60,15 @@ namespace taiyuanhitech.TGFCSpiderman
                 {
                     if (text.EndsWith("+"))
                     {
-                        var bNode = nextTextNodeOfMessageNode.GetNextSibling2("b");
-                        positiveRate = int.Parse(bNode.InnerText);
-                        var nextText = bNode.GetNextSibling2("#text").InnerText;
+                        var bNode = nextTextNodeOfMessageNode.NextSibling;
+                        positiveRate = int.Parse(bNode.Cq().Text());
+                        var nextText = bNode.NextSibling.Cq().Text();
                         negativeRate = int.Parse(RatingNegativeRegex.Match(nextText).Groups[1].Value);
                     }
                     else if (text.EndsWith("-"))
                     {
-                        var bNode = nextTextNodeOfMessageNode.GetNextSibling2("b");
-                        negativeRate = int.Parse(bNode.InnerText);
+                        var bNode = nextTextNodeOfMessageNode.NextSibling;
+                        negativeRate = int.Parse(bNode.Cq().Text());
                         positiveRate = int.Parse(RatingPositiveRegex.Match(text).Groups[1].Value);
                     }
                 }
@@ -117,45 +96,11 @@ namespace taiyuanhitech.TGFCSpiderman
                 throw new ProcessFaultException(request, "forum page 没有找到title和author元素。");
 
             var headers = new List<ThreadHeader>(titles.Length);
-
-            for (int i = 0; i < titles.Length; i++)
+            for (var i = 0; i < titles.Length; i++)
             {
                 var titleNode = titles[i];
                 var authorNode = authors[i];
-
-                var titleAnchor = titleNode.Cq().Find("a:first").FirstOrDefault();
-                if (titleAnchor == null)
-                    throw new ProcessFaultException(request, string.Format("第{0}个title元素里面没有a元素。", i));
-
-                var url = titleAnchor["href"];
-                var titleText = titleAnchor.Cq().Text().Trim();
-                int threadId = url.GetThreadId();
-                if (0 == threadId)
-                    throw new ProcessFaultException(request, string.Format("无法从第{0}个thread url中获取thread id。", i));
-
-                var authorText = authorNode.Cq().Text();
-                if (string.IsNullOrWhiteSpace(authorText))
-                    throw new ProcessFaultException(request, string.Format("第{0}个author元素没有内容。", i));
-                var values = authorText.Split('/');
-                if (values.Length != 4)
-                    throw new ProcessFaultException(request, string.Format("第{0}个author元素内容经/分割后不是4项。", i));
-
-                var header = new ThreadHeader
-                {
-                    Id = threadId,
-                    Url = url,
-                    Title = titleText,
-                };
-                try
-                {
-                    header.UserName = values[0].Substring(1);
-                    header.ReplyCount = int.Parse(values[1]);
-                }
-                catch (Exception e)
-                {
-                    throw new ProcessFaultException(request, string.Format("第{0}个author元素UserName、ReplyCount存在问题。", i), e);
-                }
-                headers.Add(header);
+                headers.Add(GetThreadHeader(titleNode, authorNode, request, i));
             }
 
             return new MillResult<List<ThreadHeader>>
@@ -171,51 +116,70 @@ namespace taiyuanhitech.TGFCSpiderman
             if (request == null || string.IsNullOrWhiteSpace(request.HtmlContent))
                 throw new ArgumentNullException("request");
 
-            var htmlDoc = new HtmlDocument();
-            htmlDoc.LoadHtml(HttpUtility.HtmlDecode(request.HtmlContent));
-            var rootNode = htmlDoc.DocumentNode;
-            EnsureSignedIn(rootNode, request);
+            var root = CQ.CreateDocument(request.HtmlContent);
+            EnsureSignedIn(root, request);
 
-            var navNode = rootNode.CssSelect("div.wrap > div.navbar").FirstOrDefault();
-            if (navNode == null)
-                throw new ProcessFaultException(request, "无法定位navbar");
-
-            var bodyNode = navNode.GetNextSibling2("div");
-            if (bodyNode == null)
+            var body = root.Select("div.wrap:first > div:eq(1)").FirstElement();
+            if (body == null || body.HasAttributes)
                 throw new ProcessFaultException(request, "无法定位包含内容的div元素");
+            var bodyCq = body.Cq();
+            EnsurePermissionAllowed(bodyCq, request);
 
-            EnsurePermissionAllowed(bodyNode, request);
-
-            int currentPageIndex = GetThreadPageCurrentIndex(request, rootNode);
+            var currentPageIndex = GetThreadPageCurrentIndex(request, root);
             var isFirstPage = currentPageIndex == 1;
-            var thread = new ForumThread { Url = request.Url, Id = request.Url.GetThreadId(), CurrentPageIndex = currentPageIndex };
+            var thread = new ForumThread
+            {
+                Url = request.Url,
+                Id = request.Url.GetThreadId(),
+                CurrentPageIndex = currentPageIndex
+            };
 
             if (isFirstPage)
             {
-                var titleNode = bodyNode.CssSelect("b").First();
-                thread.Title = titleNode.InnerText;
+                var titleNode = bodyCq.Find("b:first").FirstOrDefault();
+                if (titleNode == null)
+                {
+                    throw new ProcessFaultException(request, "无法定位主题的title元素");
+                }
+                thread.Title = titleNode.Cq().Text();
 
-                var dateNode = titleNode.GetNextSibling("#text");
-                var createDate = DateTime.Parse(dateNode.InnerText.Replace("时间:", "").Trim());
+                var dateNode = titleNode.NextSibling;
+                if (dateNode == null)
+                    throw new ProcessFaultException(request, "无法定位发帖日期元素");
+                dateNode = dateNode.NextSibling;
+                if (dateNode == null || dateNode.NodeType != NodeType.TEXT_NODE)
+                    throw new ProcessFaultException(request, "无法定位发帖日期元素");
+                var createDate = DateTime.Parse(dateNode.NodeValue.Replace("时间:", "").Trim());
 
-                var authorLiteralNode = dateNode.GetNextSibling("#text");
-                if (authorLiteralNode.InnerText.Trim() == "作者:匿名")
+                var authorLiteralNode = dateNode.NextSibling;
+                if (authorLiteralNode == null)
+                    throw new ProcessFaultException(request, "无法定位主题作者元素");
+                authorLiteralNode = authorLiteralNode.NextSibling;
+                if (authorLiteralNode == null || authorLiteralNode.NodeType != NodeType.TEXT_NODE)
+                    throw new ProcessFaultException(request, "无法定位主题作者元素");
+                var author = authorLiteralNode.NodeValue;
+
+                if (author == "作者:匿名")
                     thread.UserName = "匿名";
-                else if (authorLiteralNode.InnerText.Trim() == "作者:")
+                else if (author == "作者:")
                 {
-                    var userNameAnchor = authorLiteralNode.GetNextSibling("a");
-                    thread.UserName = userNameAnchor.InnerText.Trim();
+                    var userNameAnchor = authorLiteralNode.NextElementSibling;
+                    if (userNameAnchor == null || userNameAnchor.NodeName.ToUpper() != "A")
+                        throw new ProcessFaultException(request, "无法定位主题作者元素");
+                    thread.UserName = userNameAnchor.Cq().Text().Trim();
                 }
 
-                var messageNode = authorLiteralNode.GetNextSibling("div");
-                if ("message" != messageNode.GetAttributeValue("class"))
-                {
-                    messageNode = bodyNode.CssSelect("div.message").First();
-                }
+                var messageNode = bodyCq.Find("div.message:first").FirstOrDefault();
+                if (messageNode == null)
+                    throw new ProcessFaultException(request, "无法定位主题内容元素");
 
-                var firstPostHtmlContent = messageNode.InnerHtml;
-                var modifyDate = GetModifyDate(messageNode, thread.UserName);
-                int pid = messageNode.GetNextSibling2("a").GetAttributeValue("href").GetPostId();
+                var firstPostHtmlContent = HttpUtility.HtmlDecode(messageNode.InnerHTML);
+                var modifyDate = GetModifyDate(messageNode.Cq(), thread.UserName);
+                var pidAnchor = messageNode.Cq().NextAll("a").FirstElement() ??
+                                root.Select("a:contains('引用')").FirstElement();
+                if (pidAnchor == null)
+                    throw new ProcessFaultException(request, "无法定位主题中包含pid的锚元素，无法获取pid");
+                var pid = pidAnchor["href"].GetPostId();
                 var ratings = messageNode.GetRatings();
                 var post = new Post
                 {
@@ -230,60 +194,46 @@ namespace taiyuanhitech.TGFCSpiderman
                     PositiveRate = ratings.Item1,
                     NegativeRate = ratings.Item2,
                 };
-                //TODO:set rating 
                 thread.Posts.Add(post);
             }
 
-            //Get replies:
-            var infobarNodes = bodyNode.CssSelect("div.infobar").ToArray();
-            var messageNodes = isFirstPage
-                ? bodyNode.CssSelect("div.message").Skip(1).ToArray()//第一个元素是主题，上面已经查看过了。
-                : bodyNode.CssSelect("div.message").ToArray();
-
+            var infobarNodes = bodyCq.Find("div.infobar");
+            var messageNodes = isFirstPage ? bodyCq.Find("div.message:gt(0)") : bodyCq.Find("div.message");
             if (infobarNodes.Length != messageNodes.Length)
                 throw new ProcessFaultException(request, "infobar和message元素个数不一致。");
-            if (infobarNodes.Length != 0)
+
+            if (infobarNodes.Length > 0)
             {
-                try
+                var replies = infobarNodes.Zip(messageNodes, (infobarNode, messageNode) => new { infobarNode, messageNode }).Select((x, index) =>
                 {
-                    var replies = infobarNodes.Select((info, index) =>
+                    var post = new Post
                     {
-                        var post = new Post
-                        {
-                            ThreadId = thread.Id,
-                            Id = int.Parse(info.GetPreviousSibling("a").GetAttributeValue("name").Replace("pid", ""))
-                        };
-                        var orderNode = info.CssSelect("b").First();
-                        post.Order = int.Parse(orderNode.InnerText.Replace("#", ""));
-                        var userNameAnchor = orderNode.GetNextSibling2("a");
-                        if (userNameAnchor != null)
-                        {
-                            post.UserName = userNameAnchor.InnerText;
-                        }
-                        else
-                        {
-                            post.UserName = orderNode.NextSibling.InnerText.Trim();
-                        }
-                        post.CreateDate = DateTime.Parse(info.CssSelect("span.nf").Single().InnerText);
-                        var replyBodyNode = messageNodes[index];
-                        post.HtmlContent = replyBodyNode.InnerHtml;
+                        ThreadId = thread.Id,
+                        HtmlContent = HttpUtility.HtmlDecode(x.messageNode.InnerHTML)
+                    };
+                    var orderAnchor = x.infobarNode.Cq().Find("b a").FirstElement();
+                    if (orderAnchor == null)
+                        throw new ProcessFaultException(request, string.Format("第{0}个回复无法定位楼层锚元素。", index));
+                    post.Id = orderAnchor["href"].GetPostId();
+                    post.Order = int.Parse(orderAnchor.InnerText.Replace("#",""));
 
-                        post.ModifyDate = GetModifyDate(replyBodyNode, post.UserName);
-                        var ratings = replyBodyNode.GetRatings();
-                        post.PositiveRate = ratings.Item1;
-                        post.NegativeRate = ratings.Item2;
-                        //TODO:set rating 
-                        return post;
-                    });
-                    thread.Posts.AddRange(replies);
-                }
-                catch (Exception e)
-                {
-                    throw new ProcessFaultException(request, e.Message, e);
-                }
+                    var nextTextNode = orderAnchor.ParentNode.NextSibling;
+                    if (nextTextNode == null || nextTextNode.NodeType != NodeType.TEXT_NODE)
+                        throw new ProcessFaultException(request, string.Format("第{0}个回复无法定位作者元素。", index));
+                    var text = nextTextNode.Cq().Text();
+                    post.UserName = text.Trim().EndsWith("匿名") ? "匿名" : orderAnchor.ParentNode.NextElementSibling.Cq().Text();
+                    post.CreateDate = DateTime.Parse(x.infobarNode.Cq().Find("span.nf:first").Text());
+                    post.ModifyDate = GetModifyDate(x.messageNode.Cq(), post.UserName);
+                    var ratings = x.messageNode.GetRatings();
+                    post.PositiveRate = ratings.Item1;
+                    post.NegativeRate = ratings.Item2;
+
+                    return post;
+                });
+                thread.Posts.AddRange(replies);
             }
-
-            var nextPageUrl = isFirstPage ? null : GetNextThreadPageUrl(request, rootNode);
+            
+            var nextPageUrl = isFirstPage ? null : GetNextThreadPageUrl(request, root);
 
             return new MillResult<ForumThread>
             {
@@ -294,28 +244,64 @@ namespace taiyuanhitech.TGFCSpiderman
             };
         }
 
-        private int GetThreadPageCurrentIndex(MillRequest request, HtmlNode rootNode)
+        private int GetThreadPageCurrentIndex(MillRequest request, CQ root)
         {
             if (!request.Url.MatchPageIndex())
                 return 1;
 
-            var pagingNode = rootNode.CssSelect("span.paging").FirstOrDefault();
+            var pagingNode = root.Select("span.paging:first").FirstOrDefault();
             if (pagingNode == null)
                 return 1;
 
-            var currentPageIndexNode = pagingNode.CssSelect("span.s1").Single();
+            var currentPageIndexNode = pagingNode.Cq().Find("span.s1").Single();
             return int.Parse(currentPageIndexNode.InnerText.Replace("##", ""));
         }
 
-        private DateTime? GetModifyDate(HtmlNode postBodyNode, string userName)
+        private ThreadHeader GetThreadHeader(IDomObject titleNode, IDomObject authorNode, MillRequest request, int i)
         {
-            var modifyDateElement = postBodyNode.CssSelect("i").LastOrDefault();
+            var titleAnchor = titleNode.Cq().Find("a:first").FirstOrDefault();
+            if (titleAnchor == null)
+                throw new ProcessFaultException(request, string.Format("第{0}个title元素里面没有a元素。", i));
+
+            var url = titleAnchor["href"];
+            var titleText = titleAnchor.Cq().Text().Trim();
+            int threadId = url.GetThreadId();
+            if (0 == threadId)
+                throw new ProcessFaultException(request, string.Format("无法从第{0}个thread url中获取thread id。", i));
+
+            var authorText = authorNode.Cq().Text();
+            if (string.IsNullOrWhiteSpace(authorText))
+                throw new ProcessFaultException(request, string.Format("第{0}个author元素没有内容。", i));
+            var values = authorText.Replace("[", "").Replace("]", "").Split('/');
+            if (values.Length != 4)
+                throw new ProcessFaultException(request, string.Format("第{0}个author元素内容经/分割后不是4项。", i));
+
+            var header = new ThreadHeader
+            {
+                Id = threadId,
+                Url = url,
+                Title = titleText,
+                UserName = values[0],
+            };
+            int replyCount;
+            if (!int.TryParse(values[1], out replyCount))
+            {
+                throw new ProcessFaultException(request, string.Format("第{0}个author元素ReplyCount不是数字。", i));
+            }
+            header.ReplyCount = replyCount;
+
+            return header;
+        }
+
+        private DateTime? GetModifyDate(CQ postBodyNode, string userName)
+        {
+            var modifyDateElement = postBodyNode.Find("i:last").FirstOrDefault();
 
             if (modifyDateElement == null) return null;
 
             DateTime? dt = null;
             var re = new Regex(string.Format(@"^\s*本帖最后由 {0} 于 ([-:\d ]+)", Regex.Escape(userName)));
-            var match = re.Match(modifyDateElement.InnerText);
+            var match = re.Match(modifyDateElement.Cq().Text());
             if (match.Success)
             {
                 dt = DateTime.Parse(match.Groups[1].Value);
@@ -326,7 +312,7 @@ namespace taiyuanhitech.TGFCSpiderman
         private void EnsureSignedIn(CQ root, MillRequest request)
         {
             var signedIn = true;
-            var footer = root.Select("div.wrap > div#footer").FirstOrDefault();
+            var footer = root.Select("div#footer").FirstOrDefault();
             if (footer == null)
                 signedIn = false;
             else
@@ -343,29 +329,9 @@ namespace taiyuanhitech.TGFCSpiderman
                 throw new NotSignedInException(request);
         }
 
-        private void EnsureSignedIn(HtmlNode rootNode, MillRequest request)
+        private void EnsurePermissionAllowed(CQ body, MillRequest request)
         {
-            var signedIn = true;
-            var footer = rootNode.CssSelect("div#footer").FirstOrDefault();
-            if (footer == null)
-                signedIn = false;
-            else
-            {
-                var anchorsInFooter = footer.CssSelect("a").ToArray();
-                if (anchorsInFooter.Any(link => link.InnerText == "注册")
-                    || anchorsInFooter.Any(link => link.InnerText == "登陆"))
-                {
-                    signedIn = false;
-                }
-            }
-
-            if (!signedIn)
-                throw new NotSignedInException(request);
-        }
-
-        private void EnsurePermissionAllowed(HtmlNode bodyNode, MillRequest request)
-        {
-            if (bodyNode.InnerText.Trim() == "无权查看本主题")
+            if (body.Text() == "无权查看本主题")
                 throw new PermissionDeniedException(request);
         }
 
@@ -379,14 +345,14 @@ namespace taiyuanhitech.TGFCSpiderman
             return nextPageNode == null ? null : nextPageNode["href"];
         }
 
-        private string GetNextThreadPageUrl(MillRequest request, HtmlNode rootNode)
+        private string GetNextThreadPageUrl(MillRequest request, CQ root)
         {
-            var currentPageNode = rootNode.CssSelect("span.paging > span.s1").FirstOrDefault();
+            var currentPageNode = root.Select("span.paging > span.s1").FirstElement();
             if (currentPageNode == null)
                 throw new ProcessFaultException(request, "找不到分页元素。");
 
-            var previous = currentPageNode.GetPreviousSibling("a");
-            return previous == null ? null : previous.GetAttributeValue("href");
+            var previous = currentPageNode.Cq().Prev("a").FirstElement();
+            return previous == null ? null : previous["href"];
         }
     }
 }
