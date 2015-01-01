@@ -273,8 +273,8 @@ namespace taiyuanhitech.TGFCSpiderman
             if (string.IsNullOrWhiteSpace(authorText))
                 throw new ProcessFaultException(request, string.Format("第{0}个author元素没有内容。", i));
             var values = authorText.Replace("[", "").Replace("]", "").Split('/');
-            if (values.Length != 4)
-                throw new ProcessFaultException(request, string.Format("第{0}个author元素内容经/分割后不是4项。", i));
+            if (values.Length < 4)
+                throw new ProcessFaultException(request, string.Format("第{0}个author元素内容经/分割后小于4项。", i));
 
             var header = new ThreadHeader
             {
