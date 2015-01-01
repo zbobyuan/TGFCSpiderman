@@ -121,8 +121,9 @@ namespace taiyuanhitech.TGFCSpiderman
                         }
                         if (processStatus == MillStatus.FormatError)
                         {
-                            Console.WriteLine("分析网页结构时发生错误，本系统将停止执行。Url : {0}", lastReplyPageUrl);
-                            return;
+                            Console.WriteLine("分析网页结构时发生错误，正在尝试列表中的上一个主题。Url : {0}", lastReplyPageUrl);
+                            currentIndex--;
+                            continue;
                         }
                         if (processStatus == MillStatus.PermissionDenied)
                         {
@@ -143,7 +144,7 @@ namespace taiyuanhitech.TGFCSpiderman
                         else
                         {
                             //下一页可能还有更新的，先处理本页的，再到下一页看看。
-                            HandleThreads(threadHeasers);
+                            HandleThreads(threadHeasers.Where(t => !_excludedThreadIds.Contains(t.Id)));
                             entryPointUrl = forumPageMillResult.NextPageUrl;
                             break;
                         }
@@ -153,7 +154,7 @@ namespace taiyuanhitech.TGFCSpiderman
             finally
             {
                 stopwatch.Stop();
-                Console.WriteLine("运行完成，耗时 {0} 秒", stopwatch.Elapsed.TotalSeconds);
+                Console.WriteLine("运行完成，耗时 {0} 秒，约{1:0.0}分钟", stopwatch.Elapsed.TotalSeconds, stopwatch.Elapsed.TotalSeconds / 60.0);
             }
         }
 
@@ -221,10 +222,10 @@ namespace taiyuanhitech.TGFCSpiderman
             }
             if (status == MillStatus.FormatError)
             {
-                Console.WriteLine("主题页格式发生变化，无法查看。程序正在关闭...");
-                _pageFetchJobRunner.Stop();
-                _pageSaveJobRunner.Stop();
-                _pageMillJobRunner.Stop();
+                Console.WriteLine("主题页格式发生变化，无法查看...");
+                //_pageFetchJobRunner.Stop();
+                //_pageSaveJobRunner.Stop();
+                //_pageMillJobRunner.Stop();
             }
             if (status == MillStatus.Success)
             {

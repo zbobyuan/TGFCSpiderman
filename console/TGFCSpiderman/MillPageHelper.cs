@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using NLog;
 using taiyuanhitech.TGFCSpiderman.CommonLib;
 
 namespace taiyuanhitech.TGFCSpiderman
 {
     public static class MillPageHelper
     {
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         public static MillStatus TryProcessPage<T>(this IPageProcessor pageProcessor, MillRequest request, out MillResult<T> result)
             where T : class
         {
@@ -28,17 +30,17 @@ namespace taiyuanhitech.TGFCSpiderman
             }
             catch (NotSignedInException ne)
             {
-                Console.WriteLine("解析网页时发现未登录，URL: {0}\r\n, 内容:{1}", ne.Request.Url, ne.Request.HtmlContent);
+                Logger.Info("解析网页时发现未登录，URL: {0}\r\n 内容:{1}", ne.Request.Url, ne.Request.HtmlContent);
                 return MillStatus.NotSignedIn;
             }
             catch (PermissionDeniedException pde)
             {
-                Console.WriteLine("解析网页时发现没有权限，URL: {0}\r\n, 内容:{1}", pde.Request.Url, pde.Request.HtmlContent);
+                Logger.Info("解析网页时发现没有权限，URL: {0}\r\n 内容:{1}", pde.Request.Url, pde.Request.HtmlContent);
                 return MillStatus.PermissionDenied;
             }
             catch (ProcessFaultException pfe)
             {
-                Console.WriteLine("解析网页时发生错误，错误信息：{0}\r\n, URL: {1}\r\n, 内容:{2}\r\n, 内部异常:{3}\r\n", pfe.Message, pfe.Request.Url, pfe.Request.HtmlContent, pfe.InnerException);
+                Logger.Error("解析网页时发生错误，错误信息：{0}\r\n URL: {1}\r\n 内容:{2}\r\n 内部异常:{3}\r\n", pfe.Message, pfe.Request.Url, pfe.Request.HtmlContent, pfe.InnerException);
                 return MillStatus.FormatError;
             }
         }
