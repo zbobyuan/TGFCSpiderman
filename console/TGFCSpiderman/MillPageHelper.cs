@@ -30,17 +30,23 @@ namespace taiyuanhitech.TGFCSpiderman
             }
             catch (NotSignedInException ne)
             {
-                Logger.Info("解析网页时发现未登录，URL: {0}\r\n 内容:{1}", ne.Request.Url, ne.Request.HtmlContent);
+                Logger.Trace("解析网页时发现未登录，URL: {0}\r\n 内容:{1}", ne.Request.Url, ne.Request.HtmlContent);
                 return MillStatus.NotSignedIn;
             }
             catch (PermissionDeniedException pde)
             {
-                Logger.Info("解析网页时发现没有权限，URL: {0}\r\n 内容:{1}", pde.Request.Url, pde.Request.HtmlContent);
+                Logger.Trace("解析网页时发现没有权限，URL: {0}\r\n 内容:{1}", pde.Request.Url, pde.Request.HtmlContent);
                 return MillStatus.PermissionDenied;
             }
             catch (ProcessFaultException pfe)
             {
-                Logger.Error("解析网页时发生错误，错误信息：{0}\r\n URL: {1}\r\n 内容:{2}\r\n 内部异常:{3}\r\n", pfe.Message, pfe.Request.Url, pfe.Request.HtmlContent, pfe.InnerException);
+                Logger.Trace("解析网页时发生错误，错误信息：{0}\r\n URL: {1}\r\n 内容:{2}\r\n 内部异常:{3}\r\n", pfe.Message, pfe.Request.Url,
+                    pfe.Request.HtmlContent, pfe.InnerException);
+                return MillStatus.FormatError;
+            }
+            catch (Exception e)
+            {
+                Logger.Trace("Error URL:{0}\r\n{1}",request.Url, e);
                 return MillStatus.FormatError;
             }
         }
