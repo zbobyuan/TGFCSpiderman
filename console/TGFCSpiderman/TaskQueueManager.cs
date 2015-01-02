@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
 using System.Threading;
+using NLog;
 using taiyuanhitech.TGFCSpiderman.CommonLib;
 using taiyuanhitech.TGFCSpiderman.JobQueue;
 
@@ -12,9 +13,10 @@ namespace taiyuanhitech.TGFCSpiderman
 {
     public class TaskQueueManager
     {
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         private const int InitialRetryInterval = 100;//TODO:configurable
-        private const int ForumPageMaxRetryCount = 5;
-        private const int ThreadPageMaxRetryCount = 3;
+        private const int ForumPageMaxRetryCount = 15;
+        private const int ThreadPageMaxRetryCount = 10;
         private const int MaxRetryInterval = InitialRetryInterval * (2 << 10);
         private static readonly TaskQueueManager _inst;
         private readonly IPageFetcher _pageFetcher;
@@ -58,18 +60,17 @@ namespace taiyuanhitech.TGFCSpiderman
             stopwatch.Start();
             try
             {
-                var entryPointUrl = "index.php?action=forum&fid=25&vt=1&tp=100&pp=100&sc=1&vf=0&sm=0&iam=notop-nolight-noattach&css=default&page=1";
-                for (; ; )
+                var entryPointUrl = "index.php?action=forum&fid=25&vt=1&tp=100&pp=100&sc=1&vf=0&sm=0&iam=notop-nolight-noattach&css=default&page=90";
+                for (; ;)
                 {
                     if (entryPointUrl == null)
                         return;
-                    Console.WriteLine("正在获取论坛第 {0} 页。", entryPointUrl.GetPageIndex());
+                    Logger.Info("正在获取论坛第 {0} 页。", entryPointUrl.GetPageIndex());
                     var entryPointFetchResult = FetchPage(entryPointUrl);
-                    if (entryPointFetchResult != null)
-                        Console.WriteLine("获取完成，开始处理。");
-                    else
+                    if (entryPointFetchResult == null)
                     {
-                        Console.WriteLine("无法获取论坛第 {0} 页，退出运行。", entryPointUrl.GetPageIndex());
+                        Logger.Error("无法获取论坛第 {0} 页，URL:{1}\r\n退出运行。", entryPointUrl.GetPageIndex(), entryPointUrl);
+                        return;
                     }
 
                     MillResult<List<ThreadHeader>> forumPageMillResult;
@@ -93,7 +94,7 @@ namespace taiyuanhitech.TGFCSpiderman
                     }
 
                     //找到最后一个thread 的最后reply date
-                    List<ThreadHeader> threadHeasers = forumPageMillResult.Result;
+                    var threadHeasers = forumPageMillResult.Result;
                     int currentIndex = threadHeasers.Count - 1;
                     for (; ; )
                     {
@@ -105,8 +106,14 @@ namespace taiyuanhitech.TGFCSpiderman
                         }
                         var header = threadHeasers[currentIndex];
                         var lastReplyPageUrl = header.Url.ChangePageIndex(header.GetLastPageIndex());
-                        Console.WriteLine("正在获取主题列表第 {0} 个主题最后一页。", currentIndex + 1);
-                        string threadLastPageFetchResult = FetchPage(lastReplyPageUrl);
+                        Console.WriteLine("主题列表第 {0} 个主题最后一页正在获取。", currentIndex + 1);
+                        var threadLastPageFetchResult = FetchPage(lastReplyPageUrl);
+                        if (threadLastPageFetchResult == null)
+                        {
+                            Logger.Info("主题列表第 {0} 个主题最后一页无法获取，尝试上一个主题。", currentIndex + 1);
+                            currentIndex--;
+                            continue;
+                        }
                         Console.WriteLine("获取完成。");
                         MillResult<ForumThread> threadLastPageProcessResult;
                         processStatus = _pageProcessor.TryProcessPage(
@@ -201,6 +208,7 @@ namespace taiyuanhitech.TGFCSpiderman
             var retryCount = GetRetryCount(result.Url) + 1;
             if (retryCount >= ThreadPageMaxRetryCount)
             {
+                Logger.Error("获取URL:{0}重试次数达到上限{1}，不再继续尝试。", result.Url, ThreadPageMaxRetryCount);
                 _retryCounter.Remove(result.Url);
                 return;
             }
@@ -258,7 +266,6 @@ namespace taiyuanhitech.TGFCSpiderman
                     return null;
                 }
                 _retryCounter[url] = retryInterval + 1;
-                //TODO:log error
 
                 Thread.Sleep(TimeSpan.FromMilliseconds(retryInterval));
                 retryInterval *= 2;
@@ -289,6 +296,9 @@ namespace taiyuanhitech.TGFCSpiderman
 
         public static int GetLastPageIndex(this ThreadHeader header)
         {
+            if (header.ReplyCount == -1)//somehow replycount is unknown
+                return 9999;
+
             const int postsPerPage = 100;
             return header.ReplyCount / postsPerPage + 1;
         }
