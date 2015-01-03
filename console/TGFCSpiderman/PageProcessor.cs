@@ -268,27 +268,26 @@ namespace taiyuanhitech.TGFCSpiderman
             int threadId = url.GetThreadId();
             if (0 == threadId)
                 throw new ProcessFaultException(request, string.Format("无法从第{0}个thread url中获取thread id。", i));
-
-            var authorText = authorNode.Cq().Text();
-            if (string.IsNullOrWhiteSpace(authorText))
-                throw new ProcessFaultException(request, string.Format("第{0}个author元素没有内容。", i));
-            var values = authorText.Replace("[", "").Replace("]", "").Split('/');
-            if (values.Length != 4)
-                throw new ProcessFaultException(request, string.Format("第{0}个author元素内容经/分割后不是4项。", i));
-
             var header = new ThreadHeader
             {
                 Id = threadId,
                 Url = url,
                 Title = titleText,
-                UserName = values[0],
+                ReplyCount = -1
             };
+            var authorText = authorNode.Cq().Text();
+            if (string.IsNullOrWhiteSpace(authorText))
+                return header;
+            var values = authorText.Replace("[", "").Replace("]", "").Split('/');
+            if (values.Length != 4)
+                return header;
+
+            header.UserName = values[0];
             int replyCount;
-            if (!int.TryParse(values[1], out replyCount))
+            if (int.TryParse(values[1], out replyCount))
             {
-                throw new ProcessFaultException(request, string.Format("第{0}个author元素ReplyCount不是数字。", i));
+                header.ReplyCount = replyCount;
             }
-            header.ReplyCount = replyCount;
 
             return header;
         }
