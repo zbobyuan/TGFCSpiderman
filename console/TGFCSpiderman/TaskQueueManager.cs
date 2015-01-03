@@ -60,7 +60,7 @@ namespace taiyuanhitech.TGFCSpiderman
             stopwatch.Start();
             try
             {
-                var entryPointUrl = "index.php?action=forum&fid=25&vt=1&tp=100&pp=100&sc=1&vf=0&sm=0&iam=notop-nolight-noattach&css=default&page=90";
+                var entryPointUrl = "index.php?action=forum&fid=25&vt=1&tp=100&pp=100&sc=1&vf=0&sm=0&iam=notop-nolight-noattach&css=default&page=1";
                 for (; ;)
                 {
                     if (entryPointUrl == null)
