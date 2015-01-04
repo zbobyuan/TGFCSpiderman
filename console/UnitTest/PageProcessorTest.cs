@@ -194,5 +194,19 @@ namespace UnitTest
             Assert.AreEqual(800, thread.Posts[0].NegativeRate);
             Assert.AreEqual(6, thread.Posts[0].PositiveRate);
         }
+
+        [TestMethod]
+        [DeploymentItem("HtmlContents\\Closed.htm")]
+        public void ClosedThreadTest()
+        {//因为<div class="message">没有关闭标签，主楼HtmlContent和评分信息不对，期待tg修复。
+            var processor = new PageProcessor();
+            var thread = processor.ProcessThreadPage(new MillRequest
+            {
+                Url = "index.php?action=thread&tid=6865388&vt=1&tp=100&pp=100&sc=1&vf=0&sm=0&iam=notop-nolight-noattach&css=default&page=1",
+                HtmlContent = File.ReadAllText("Closed.htm")
+            }).Result;
+            Assert.AreEqual(20, thread.Posts.Count);
+            Assert.AreEqual("王小猪", thread.Posts[0].UserName);
+        }
     }
 }

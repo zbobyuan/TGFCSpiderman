@@ -44,7 +44,7 @@ namespace taiyuanhitech.TGFCSpiderman
         {
             int positiveRate = 0, negativeRate = 0;
             var nextTextNodeOfMessageNode = messageNode.NextSibling;
-            if (nextTextNodeOfMessageNode == null) 
+            if (nextTextNodeOfMessageNode == null)
                 return new Tuple<int, int>(positiveRate, negativeRate);
             nextTextNodeOfMessageNode = nextTextNodeOfMessageNode.NextSibling;
             if (nextTextNodeOfMessageNode != null && nextTextNodeOfMessageNode.NodeType == NodeType.TEXT_NODE
@@ -175,8 +175,9 @@ namespace taiyuanhitech.TGFCSpiderman
 
                 var firstPostHtmlContent = HttpUtility.HtmlDecode(messageNode.InnerHTML);
                 var modifyDate = GetModifyDate(messageNode.Cq(), thread.UserName);
-                var pidAnchor = messageNode.Cq().NextAll("a").FirstElement() ??
-                                root.Select("a:contains('引用')").FirstElement();
+                var pidAnchor = messageNode.Cq().NextAll("a").FirstElement();
+                if (pidAnchor == null || pidAnchor["href"] == null)
+                    pidAnchor = root.Select("a:contains('引用')").FirstElement();
                 if (pidAnchor == null)
                     throw new ProcessFaultException(request, "无法定位主题中包含pid的锚元素，无法获取pid");
                 var pid = pidAnchor["href"].GetPostId();
@@ -215,7 +216,7 @@ namespace taiyuanhitech.TGFCSpiderman
                     if (orderAnchor == null)
                         throw new ProcessFaultException(request, string.Format("第{0}个回复无法定位楼层锚元素。", index));
                     post.Id = orderAnchor["href"].GetPostId();
-                    post.Order = int.Parse(orderAnchor.InnerText.Replace("#",""));
+                    post.Order = int.Parse(orderAnchor.InnerText.Replace("#", ""));
 
                     var nextTextNode = orderAnchor.ParentNode.NextSibling;
                     if (nextTextNode == null || nextTextNode.NodeType != NodeType.TEXT_NODE)
@@ -232,7 +233,7 @@ namespace taiyuanhitech.TGFCSpiderman
                 });
                 thread.Posts.AddRange(replies);
             }
-            
+
             var nextPageUrl = isFirstPage ? null : GetNextThreadPageUrl(request, root);
 
             return new MillResult<ForumThread>
