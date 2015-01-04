@@ -10,7 +10,7 @@ using taiyuanhitech.TGFCSpiderman.Configuration;
 
 namespace taiyuanhitech.TGFCSpiderman
 {
-    internal class PageFetcher : IPageFetcher
+    internal class PageFetcher : IPageFetcher, IDisposable
     {
         private readonly IPageFetcherConfig _config;
         private readonly HttpClient _httpClient;
@@ -132,6 +132,13 @@ namespace taiyuanhitech.TGFCSpiderman
         private static bool GetSigninStatusFromResponse(string userName, string body)
         {
             return body.IndexOf(userName + "成功登录", StringComparison.CurrentCulture) > 0;
+        }
+
+        public void Dispose()
+        {
+            _httpClient.Dispose();
+            _signinWaitHandle.Set();
+            _signinWaitHandle.Dispose();
         }
     }
 }
