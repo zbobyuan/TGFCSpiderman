@@ -38,13 +38,13 @@
                     <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" MinWidth="50">
                         用户名
                     </TextBlock>
-                    <TextBox Grid.Row="0" Grid.Column="1" Margin="10,5,0,5" VerticalAlignment="Center"></TextBox>
+                    <TextBox Grid.Row="0" Grid.Column="1" Margin="10,5,0,5" VerticalAlignment="Center" Text="{Binding UserName ,Mode=TwoWay}" IsEnabled="{Binding LoginInfoEnabled}"></TextBox>
                     <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" MinWidth="50">
                         密码
                     </TextBlock>
-                    <PasswordBox Grid.Row="1" Grid.Column="1" Margin="10,5,0,5" VerticalAlignment="Center"></PasswordBox>
+                    <PasswordBox Name="Password" Grid.Row="1" Grid.Column="1" Margin="10,5,0,5" VerticalAlignment="Center"  IsEnabled="{Binding LoginInfoEnabled}"/>
                     <StackPanel Grid.Row="0" Grid.Column="2" Grid.RowSpan="2">
-                        <Button Margin="30,10,10,10" Content="登录" FontSize="30" FontWeight="Bold"></Button>
+                        <Button Margin="30,10,10,10" Content="登录" FontSize="30" FontWeight="Bold" Click="Signin_OnClick"></Button>
                         <controls:MetroProgressBar IsIndeterminate="True"
                                        Minimum="0"
                                        Maximum="100"

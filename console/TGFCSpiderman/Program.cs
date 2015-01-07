@@ -36,23 +36,27 @@ namespace taiyuanhitech.TGFCSpiderman
                 }
                 try
                 {
-                    ComponentFactory.GetPageFetcher().Signin(_userName, _password);
+                    ComponentFactory.GetPageFetcher().Signin(_userName, _password).Wait();
                     signedIn = true;
                     if (saveAuthInfo)
-                        configurationManager.SaveAuthConfig(new AuthConfig { UserName = _userName, Password = _password });
+                        configurationManager.SaveAuthConfig(new AuthConfig {UserName = _userName, Password = _password});
                 }
-                catch (UserNameOrPasswordException)
+                catch (AggregateException ae)
                 {
-                    Console.WriteLine("用户名或密码错误，请重新输入。");
-                    AskUserName();
-                    AskPassword();
-                    saveAuthInfo = true;
-                }
-                catch (CannotSigninException)
-                {
-                    Console.WriteLine("无法登陆，按任意键退出本系统并检查网络后重试。");
-                    Console.ReadKey();
-                    return;
+                    var inner = ae.InnerException;
+                    if (inner is UserNameOrPasswordException)
+                    {
+                        Console.WriteLine("用户名或密码错误，请重新输入。");
+                        AskUserName();
+                        AskPassword();
+                        saveAuthInfo = true;
+                    }
+                    else if (inner is CannotSigninException)
+                    {
+                        Console.WriteLine("无法登陆，按任意键退出本系统并检查网络后重试。");
+                        Console.ReadKey();
+                        return;
+                    }
                 }
             }
 

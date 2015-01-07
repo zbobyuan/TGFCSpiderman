@@ -49,6 +49,7 @@
       <HintPath>..\packages\MahApps.Metro.1.0.0.0\lib\net45\MahApps.Metro.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Data" />
     <Reference Include="System.Windows.Interactivity, Version=4.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\MahApps.Metro.1.0.0.0\lib\net45\System.Windows.Interactivity.dll</HintPath>
@@ -113,6 +114,12 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="t.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TGFCSpiderman\TGFCSpiderman.csproj">
+      <Project>{771f9d89-ca1e-4c98-b9b4-414d5dfcd531}</Project>
+      <Name>TGFCSpiderman</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />

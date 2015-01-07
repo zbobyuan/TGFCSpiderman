@@ -3,7 +3,7 @@ using System.Configuration;
 
 namespace taiyuanhitech.TGFCSpiderman.Configuration
 {
-    class ConfigurationManager
+    public class ConfigurationManager
     {
         private const string SectionName = "tgfc";
         private readonly System.Configuration.Configuration _config;

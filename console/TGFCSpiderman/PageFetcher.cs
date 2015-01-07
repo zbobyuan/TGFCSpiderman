@@ -77,7 +77,7 @@ namespace taiyuanhitech.TGFCSpiderman
             }
         }
 
-        public void Signin(string userName, string password)
+        public async Task Signin(string userName, string password)
         {
             _signinWaitHandle.Reset();
             bool signedIn = false;
@@ -97,11 +97,11 @@ namespace taiyuanhitech.TGFCSpiderman
                 {
                     try
                     {
-                        var responseMessage = _httpClient.PostAsync(url, content).Result;
+                        var responseMessage = await _httpClient.PostAsync(url, content);
                         responseMessage.EnsureSuccessStatusCode();
                         using (var responseContent = responseMessage.Content)
                         {
-                            var responseBody = HttpUtility.HtmlDecode(responseContent.ReadAsStringAsync().Result);
+                            var responseBody = HttpUtility.HtmlDecode(await responseContent.ReadAsStringAsync());
                             if (!GetSigninStatusFromResponse(userName, responseBody))
                             {
                                 throw new UserNameOrPasswordException();
