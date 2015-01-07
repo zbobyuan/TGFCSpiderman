@@ -18,8 +18,52 @@
         </TextBlock>
         <TabControl controls:TabControlHelper.IsUnderlined="True" Margin="0,5,0,5">
             <TabItem Header="控制台" controls:ControlsHelper.HeaderFontSize="20">
-                
-
+                <Grid Margin="5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="3*"/>
+                        <ColumnDefinition Width="2*" MinWidth="100"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"></RowDefinition>
+                        <RowDefinition Height="Auto"></RowDefinition>
+                        <RowDefinition Height="Auto"></RowDefinition>
+                        <RowDefinition Height="Auto"></RowDefinition>
+                        <RowDefinition Height="Auto"></RowDefinition>
+                        <RowDefinition Height="Auto"></RowDefinition>
+                        <RowDefinition Height="Auto"></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                        <RowDefinition></RowDefinition>
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" MinWidth="50">
+                        用户名
+                    </TextBlock>
+                    <TextBox Grid.Row="0" Grid.Column="1" Margin="10,5,0,5" VerticalAlignment="Center"></TextBox>
+                    <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" MinWidth="50">
+                        密码
+                    </TextBlock>
+                    <PasswordBox Grid.Row="1" Grid.Column="1" Margin="10,5,0,5" VerticalAlignment="Center"></PasswordBox>
+                    <StackPanel Grid.Row="0" Grid.Column="2" Grid.RowSpan="2">
+                        <Button Margin="30,10,10,10" Content="登录" FontSize="30" FontWeight="Bold"></Button>
+                        <controls:MetroProgressBar IsIndeterminate="True"
+                                       Minimum="0"
+                                       Maximum="100"
+                                       Foreground="{DynamicResource AccentColorBrush}"
+                                       Margin="30, 0, 10, 0" />
+                    </StackPanel>
+                    <Separator Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3" Margin="0,10,0,10"></Separator>
+                    <TextBlock Grid.Row="3" Grid.Column="0" VerticalAlignment="Center">运行模式</TextBlock>
+                    <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal">
+                        <RadioButton GroupName="1" Content="手动" Margin="10" IsChecked="True"></RadioButton>
+                        <RadioButton GroupName="1" Content="自动" Margin="10"></RadioButton>
+                    </StackPanel>
+                    <TextBlock Grid.Row="4" Grid.Column="0" VerticalAlignment="Center">截止日期</TextBlock>
+                    <StackPanel Grid.Row="4" Grid.Column="1" Margin="10,5,0,5" Orientation="Horizontal" Grid.ColumnSpan="2">
+                        <DatePicker VerticalAlignment="Center" Margin="0,0,30,0" MinWidth="180"/>
+                        <TextBlock VerticalAlignment="Center">起始页码</TextBlock>
+                        <TextBox Margin="30,0,0,0" Width="50">1</TextBox>
+                    </StackPanel>
+                </Grid>
             </TabItem>
         </TabControl>
     </DockPanel>
