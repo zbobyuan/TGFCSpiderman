@@ -3,8 +3,8 @@
                       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                       xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
                       Title="GFCSpidermanX"
-                      Height="350"
-                      Width="525"
+                      Height="600"
+                      Width="800"
                       TitleCaps="False"
                       Icon="t.ico">
     <DockPanel LastChildFill="True">
@@ -17,14 +17,10 @@
             用 生 命 玩 论 坛
         </TextBlock>
         <TabControl controls:TabControlHelper.IsUnderlined="True" Margin="0,5,0,5">
-            <TabItem Header="指挥部" controls:ControlsHelper.HeaderFontSize="20">
-                <StackPanel>
-                    <TextBlock>用户名</TextBlock>
-                    <TextBox>张三丰</TextBox>
-                </StackPanel>
+            <TabItem Header="控制台" controls:ControlsHelper.HeaderFontSize="20">
+                
 
             </TabItem>
-            <TabItem Header="指挥部2" controls:ControlsHelper.HeaderFontSize="20"></TabItem>
         </TabControl>
     </DockPanel>
 </controls:MetroWindow>
