@@ -14,7 +14,7 @@ using System.Windows.Navigation;
 using System.Windows.Shapes;
 using MahApps.Metro.Controls;
 
-namespace TGFCSpidermanX
+namespace taiyuanhitech.TGFCSpidermanX
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml

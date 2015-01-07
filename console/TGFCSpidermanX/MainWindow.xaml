@@ -1,11 +1,30 @@
-﻿<Controls:MetroWindow x:Class="TGFCSpidermanX.MainWindow"
+﻿<controls:MetroWindow x:Class="taiyuanhitech.TGFCSpidermanX.MainWindow"
                       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                      xmlns:Controls="http://metro.mahapps.com/winfx/xaml/controls"
-                      Title="MainWindow"
+                      xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
+                      Title="GFCSpidermanX"
                       Height="350"
-                      Width="525">
-    <Grid>
+                      Width="525"
+                      TitleCaps="False"
+                      Icon="t.ico">
+    <DockPanel LastChildFill="True">
+        <TextBlock DockPanel.Dock="Left"
+                   Margin="10,5,5,5"
+                   VerticalAlignment="Center">
+            <TextBlock.LayoutTransform>
+                <RotateTransform Angle="90" />
+            </TextBlock.LayoutTransform>
+            用 生 命 玩 论 坛
+        </TextBlock>
+        <TabControl controls:TabControlHelper.IsUnderlined="True" Margin="0,5,0,5">
+            <TabItem Header="指挥部" controls:ControlsHelper.HeaderFontSize="20">
+                <StackPanel>
+                    <TextBlock>用户名</TextBlock>
+                    <TextBox>张三丰</TextBox>
+                </StackPanel>
 
-    </Grid>
-</Controls:MetroWindow>
+            </TabItem>
+            <TabItem Header="指挥部2" controls:ControlsHelper.HeaderFontSize="20"></TabItem>
+        </TabControl>
+    </DockPanel>
+</controls:MetroWindow>
