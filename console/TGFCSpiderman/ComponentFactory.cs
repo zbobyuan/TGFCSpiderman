@@ -23,7 +23,9 @@ namespace taiyuanhitech.TGFCSpiderman
 
         public static void Startup()
         {
-            Startup(() => new PageFetcher(new ConfigurationManager().GetPageFetcherConfig()), 
+            var cm = new ConfigurationManager();
+
+            Startup(() => new PageFetcher(cm.GetPageFetcherConfig(), cm.GetAuthConfig().AuthToken), 
                 () => new PageProcessor(), 
                 () => new PostRepository());
         }

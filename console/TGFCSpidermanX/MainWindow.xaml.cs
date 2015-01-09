@@ -7,98 +7,107 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Threading;
 using MahApps.Metro.Controls;
 using taiyuanhitech.TGFCSpiderman;
 using taiyuanhitech.TGFCSpiderman.Configuration;
+using taiyuanhitech.TGFCSpidermanX.ViewModel;
 
 namespace taiyuanhitech.TGFCSpidermanX
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : MetroWindow
+    public partial class MainWindow
     {
-        private readonly BindingObject _bind;
-        private string _userName;
-        private string _password;
-        public class BindingObject : INotifyPropertyChanged
-        {
-            private string _userName;
-            private bool _loginInfoEnabled;
-
-            public string UserName
-            {
-                get { return _userName; }
-                set
-                {
-                    if (value == _userName)
-                        return;
-                    _userName = value;
-                    OnPropertyChanged("UserName");
-                }
-            }
-
-            public bool LoginInfoEnabled
-            {
-                get { return _loginInfoEnabled; }
-                set
-                {
-                    if (value == _loginInfoEnabled)
-                        return;
-                    _loginInfoEnabled = value;
-                    OnPropertyChanged("LoginInfoEnabled");
-                }
-            }
-
-            public event PropertyChangedEventHandler PropertyChanged;
-            protected void OnPropertyChanged(string propertyName)
-            {
-                if (PropertyChanged != null)
-                {
-                    PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
-                }
-            }
-        }
+        private readonly ConfigurationManager _configurationManager = new ConfigurationManager();
+        private readonly Dashboard _dashboardViewModel;
 
         public MainWindow()
         {
             InitializeComponent();
-            var configurationManager = new ConfigurationManager();
-            var authConfig = configurationManager.GetAuthConfig();
-            _userName = authConfig.UserName;
-            _password = authConfig.Password;
-            _bind = new BindingObject
-            {
-                UserName = authConfig.UserName,
-            };
-            DataContext = _bind;
+            _dashboardViewModel = (Dashboard) FindResource("DashboardViewModel");
+            var authConfig = _configurationManager.GetAuthConfig();
+            _dashboardViewModel.UserName = authConfig.UserName;
 
-            _bind.LoginInfoEnabled = string.IsNullOrEmpty(_userName);
-            if (!_bind.LoginInfoEnabled)
+            if (string.IsNullOrEmpty(_dashboardViewModel.UserName))
+            {
+                _dashboardViewModel.LoginInfoEnabled = true;
+            }
+            else
             {
                 Password.Password = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+                Login.Content = "重新登陆";
             }
         }
 
         private async void Signin_OnClick(object sender, RoutedEventArgs e)
         {
-            var pageFetcher = ComponentFactory.GetPageFetcher();
-            try
+            if (_dashboardViewModel.LoginInfoEnabled)
             {
-                await pageFetcher.Signin(_bind.UserName, Password.Password).ConfigureAwait(false);
+                Login.IsEnabled = false;
+                var pageFetcher = ComponentFactory.GetPageFetcher();
+                try
+                {
+                    var name = _dashboardViewModel.UserName;
+                    var password = Password.Password;
+                    var authToken = await pageFetcher.Signin(name, password);
+                    _configurationManager.SaveAuthConfig(new AuthConfig {UserName = name, AuthToken = authToken});
+                    Password.Password = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+                    _dashboardViewModel.LoginInfoEnabled = false;
+                    Login.Content = "重新登陆";
+                }
+                catch (CannotSigninException cse)
+                {
+                    MessageBox.Show(string.IsNullOrEmpty(cse.Message) ? "登陆不了，可能是网络不行。" : cse.Message);
+                    return;
+                }
+                finally
+                {
+                    Login.IsEnabled = true;
+                }
             }
-            catch (UserNameOrPasswordException)
+            else
             {
-                MessageBox.Show("用户密码错误.");
-                return;
+                _dashboardViewModel.LoginInfoEnabled = true;
+                Password.Clear();
+                Login.Content = "登录";
             }
-            catch (CannotSigninException)
-            {
-                MessageBox.Show("登陆不了，可能是网络不行。");
-                return;
-            }
-
-            MessageBox.Show("恭喜你登陆成功");
         }
+
+        private async void Run_OnClick(object sender, RoutedEventArgs e)
+        {
+            //OutputBox.AppendText(DateTime.Now + Environment.NewLine);
+            //OutputBox.ScrollToEnd();
+            Run.IsEnabled = false;
+            if (!ComponentFactory.GetPageFetcher().HasAuthToken)
+            {
+                MessageBox.Show("先登录。");
+                return;
+            }
+            await Task.Run(()=>
+            TaskQueueManager.Inst.Run(DateTime.Now.AddDays(-1), s =>
+            {
+                if (System.Threading.Thread.CurrentThread == OutputBox.Dispatcher.Thread)
+                {
+                    OutputBox.AppendText(s + Environment.NewLine);
+                    OutputBox.ScrollToEnd();
+                }
+                else
+                {
+                    OutputBox.Dispatcher.InvokeAsync(() =>
+                    {
+                        OutputBox.AppendText(s + Environment.NewLine);
+                        OutputBox.ScrollToEnd();
+                    });
+                }
+            }));
+            Run.IsEnabled = true;
+        }
+    }
+    class AuthConfig : IAuthConfig
+    {
+        public string UserName { get; set; }
+        public string AuthToken { get; set; }
     }
 }

@@ -10,7 +10,7 @@ namespace taiyuanhitech.TGFCSpiderman.JobQueue
 {
     public class PageFetchJobRunner : JobRunner<PageFetchRequest>
     {
-        private const int WaitingMultiplier = 2;//TODO:configurable
+        private const int WaitingMultiplier = 0;//TODO:configurable
         private readonly IPageFetcher _pageFetcher;
         private int _lastTimeRunningElapsedMilliseconds;
 

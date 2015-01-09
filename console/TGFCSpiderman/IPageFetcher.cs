@@ -7,14 +7,15 @@ namespace taiyuanhitech.TGFCSpiderman
     public interface IPageFetcher
     {
         Task<PageFetchResult> Fetch(PageFetchRequest request);
-        Task Signin(string userName, string password);
+        Task<string> Signin(string userName, string password);
+        bool HasAuthToken { get; }
     }
 
     public class CannotSigninException : Exception
     {
-    }
-
-    public class UserNameOrPasswordException : CannotSigninException
-    {
+        public CannotSigninException(string message)
+            : base(message)
+        {
+        }
     }
 }

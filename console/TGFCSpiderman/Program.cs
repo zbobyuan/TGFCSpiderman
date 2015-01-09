@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using taiyuanhitech.TGFCSpiderman.Configuration;
+using taiyuanhitech.TGFCSpiderman.Persistence;
 
 namespace taiyuanhitech.TGFCSpiderman
 {
@@ -10,7 +11,7 @@ namespace taiyuanhitech.TGFCSpiderman
         class AuthConfig : IAuthConfig
         {
             public string UserName { get; set; }
-            public string Password { get; set; }
+            public string AuthToken { get; set; }
         }
 
         private static string _userName;
@@ -23,7 +24,7 @@ namespace taiyuanhitech.TGFCSpiderman
             configurationManager.SavePageFetcherConfig(configurationManager.GetPageFetcherConfig());
             var authConfig = configurationManager.GetAuthConfig();
             _userName = authConfig.UserName;
-            _password = authConfig.Password;
+            _password = authConfig.AuthToken;
 
             bool signedIn = false, saveAuthInfo = false;
             while (!signedIn)
@@ -39,23 +40,26 @@ namespace taiyuanhitech.TGFCSpiderman
                     ComponentFactory.GetPageFetcher().Signin(_userName, _password).Wait();
                     signedIn = true;
                     if (saveAuthInfo)
-                        configurationManager.SaveAuthConfig(new AuthConfig {UserName = _userName, Password = _password});
+                        configurationManager.SaveAuthConfig(new AuthConfig {UserName = _userName, AuthToken = _password});
                 }
                 catch (AggregateException ae)
                 {
                     var inner = ae.InnerException;
-                    if (inner is UserNameOrPasswordException)
+                    if (inner is CannotSigninException)
                     {
-                        Console.WriteLine("用户名或密码错误，请重新输入。");
-                        AskUserName();
-                        AskPassword();
-                        saveAuthInfo = true;
-                    }
-                    else if (inner is CannotSigninException)
-                    {
-                        Console.WriteLine("无法登陆，按任意键退出本系统并检查网络后重试。");
-                        Console.ReadKey();
-                        return;
+                        if (string.IsNullOrEmpty(inner.Message))
+                        {
+                            Console.WriteLine("无法登陆，按任意键退出本系统并检查网络后重试。");
+                            Console.ReadKey();
+                            return;
+                        }
+                        else
+                        {
+                            Console.WriteLine(inner.Message);
+                            AskUserName();
+                            AskPassword();
+                            saveAuthInfo = true;
+                        }
                     }
                 }
             }

@@ -21,6 +21,6 @@ namespace taiyuanhitech.TGFCSpiderman.Configuration
     public interface IAuthConfig
     {
         string UserName { get; set; }
-        string Password { get; set; }
+        string AuthToken { get; set; }
     }
 }

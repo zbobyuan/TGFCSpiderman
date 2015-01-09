@@ -28,7 +28,8 @@ namespace taiyuanhitech.TGFCSpiderman
         private string _password;
         private DateTime _expirationDate;
         private Dictionary<string, int> _retryCounter;
-        private readonly HashSet<int> _excludedThreadIds = new HashSet<int> {7041501,7018450, 6685754 };
+        private readonly HashSet<int> _excludedThreadIds = new HashSet<int> { 7041501, 7018450, 6685754 };
+        private Action<string> _outputAction;
 
         static TaskQueueManager()
         {
@@ -50,8 +51,19 @@ namespace taiyuanhitech.TGFCSpiderman
             get { return _inst; }
         }
 
+        public void Run(DateTime expirationDate, Action<string> outputAction)
+        {
+            Run("", "", expirationDate, outputAction);
+        }
+
         public void Run(string userName, string password, DateTime expirationDate)
         {
+            Run(userName, password, expirationDate, Console.WriteLine);
+        }
+
+        public void Run(string userName, string password, DateTime expirationDate, Action<string> outputAction)
+        {
+            _outputAction = outputAction ?? Console.WriteLine;
             _expirationDate = expirationDate;
             _userName = userName;
             _password = password;
@@ -61,15 +73,17 @@ namespace taiyuanhitech.TGFCSpiderman
             try
             {
                 var entryPointUrl = "index.php?action=forum&fid=25&vt=1&tp=100&pp=100&sc=1&vf=0&sm=0&iam=notop-nolight-noattach&css=default&page=1";
-                for (; ;)
+                for (; ; )
                 {
                     if (entryPointUrl == null)
                         return;
-                    Logger.Info("正在获取论坛第 {0} 页。", entryPointUrl.GetPageIndex());
+                    _outputAction(string.Format("正在获取论坛第 {0} 页。", entryPointUrl.GetPageIndex()));
                     var entryPointFetchResult = FetchPage(entryPointUrl);
                     if (entryPointFetchResult == null)
                     {
-                        Logger.Error("无法获取论坛第 {0} 页，URL:{1}\r\n退出运行。", entryPointUrl.GetPageIndex(), entryPointUrl);
+                        string error = string.Format("无法获取论坛第 {0} 页，URL:{1}\r\n退出运行。", entryPointUrl.GetPageIndex(), entryPointUrl);
+                        Logger.Error(error);
+                        _outputAction(error);
                         return;
                     }
 
@@ -79,7 +93,7 @@ namespace taiyuanhitech.TGFCSpiderman
                             out forumPageMillResult);
                     if (processStatus == MillStatus.FormatError)
                     {
-                        Console.WriteLine("分析网页结构时发生错误，本系统将停止执行。Url : {0}", entryPointUrl);
+                        _outputAction(string.Format("分析网页结构时发生错误，本系统将停止执行。Url : {0}", entryPointUrl));
                         return;
                     }
                     if (processStatus == MillStatus.NotSignedIn)
@@ -89,7 +103,7 @@ namespace taiyuanhitech.TGFCSpiderman
                     }
                     if (processStatus == MillStatus.PermissionDenied)
                     {
-                        Console.WriteLine("您提供的用户没有访问主题列表的权限，本系统将停止执行。Url : {0}", entryPointUrl);
+                        _outputAction(string.Format("您提供的用户没有访问主题列表的权限，本系统将停止执行。Url : {0}", entryPointUrl));
                         return;
                     }
 
@@ -106,15 +120,15 @@ namespace taiyuanhitech.TGFCSpiderman
                         }
                         var header = threadHeasers[currentIndex];
                         var lastReplyPageUrl = header.Url.ChangePageIndex(header.GetLastPageIndex());
-                        Console.WriteLine("主题列表第 {0} 个主题最后一页正在获取。", currentIndex + 1);
+                        _outputAction(string.Format("主题列表第 {0} 个主题最后一页正在获取。", currentIndex + 1));
                         var threadLastPageFetchResult = FetchPage(lastReplyPageUrl);
                         if (threadLastPageFetchResult == null)
                         {
-                            Logger.Info("主题列表第 {0} 个主题最后一页无法获取，尝试上一个主题。", currentIndex + 1);
+                            _outputAction(string.Format("主题列表第 {0} 个主题最后一页无法获取，尝试上一个主题。", currentIndex + 1));
                             currentIndex--;
                             continue;
                         }
-                        Console.WriteLine("获取完成。");
+                        _outputAction("获取完成。");
                         MillResult<ForumThread> threadLastPageProcessResult;
                         processStatus = _pageProcessor.TryProcessPage(
                                 new MillRequest { Url = lastReplyPageUrl, HtmlContent = threadLastPageFetchResult },
@@ -128,13 +142,13 @@ namespace taiyuanhitech.TGFCSpiderman
                         }
                         if (processStatus == MillStatus.FormatError)
                         {
-                            Console.WriteLine("分析网页结构时发生错误，正在尝试列表中的上一个主题。Url : {0}", lastReplyPageUrl);
+                            _outputAction(string.Format("分析网页结构时发生错误，正在尝试列表中的上一个主题。Url : {0}", lastReplyPageUrl));
                             currentIndex--;
                             continue;
                         }
                         if (processStatus == MillStatus.PermissionDenied)
                         {
-                            Console.WriteLine("您提供的用户没有访问该主题的权限，正在尝试列表中的上一个主题。Url : {0}", entryPointUrl);
+                            _outputAction(string.Format("您提供的用户没有访问该主题的权限，正在尝试列表中的上一个主题。Url : {0}", entryPointUrl));
                             currentIndex--; //尝试上一个thread
                             continue;
                         }
@@ -145,7 +159,7 @@ namespace taiyuanhitech.TGFCSpiderman
                         if (lastReplyDate < expirationDate)
                         {
                             //todo:找出确切的最晚的一个早于expirationDate的thread，处理这个thread及比它更晚（在threadHeaders中序号更小）的thread
-                            HandleThreads(threadHeasers.Where( t => !_excludedThreadIds.Contains(t.Id)));
+                            HandleThreads(threadHeasers.Where(t => !_excludedThreadIds.Contains(t.Id)));
                             return; //全处理完了，没了
                         }
                         else
@@ -161,7 +175,7 @@ namespace taiyuanhitech.TGFCSpiderman
             finally
             {
                 stopwatch.Stop();
-                Console.WriteLine("运行完成，耗时 {0} 秒，约{1:0.0}分钟", stopwatch.Elapsed.TotalSeconds, stopwatch.Elapsed.TotalSeconds / 60.0);
+                _outputAction(string.Format("运行完成，耗时 {0} 秒，约{1:0.0}分钟", stopwatch.Elapsed.TotalSeconds, stopwatch.Elapsed.TotalSeconds / 60.0));
             }
         }
 
@@ -194,16 +208,16 @@ namespace taiyuanhitech.TGFCSpiderman
 
             if (result.Error.IsConnectionError)
             {//可能是连不上网，或者网站服务器关了
-                Console.WriteLine(result.HumanReadableDescription.ChangeStatusInDescription("网络不通"));
+                _outputAction(result.HumanReadableDescription.ChangeStatusInDescription("网络不通"));
                 return;
             }
             if (result.Error.IsTimeout)
             {//超时
-                Console.WriteLine(result.HumanReadableDescription.ChangeStatusInDescription("超时　　"));
+                _outputAction(result.HumanReadableDescription.ChangeStatusInDescription("请求超时"));
             }
             else if (result.Error.StatusCode != HttpStatusCode.OK)
             {//服务器返回错误信息
-                Console.WriteLine(result.HumanReadableDescription.ChangeStatusInDescription("请求错误"));
+                _outputAction(result.HumanReadableDescription.ChangeStatusInDescription("请求错误"));
             }
             var retryCount = GetRetryCount(result.Url) + 1;
             if (retryCount >= ThreadPageMaxRetryCount)
@@ -230,14 +244,14 @@ namespace taiyuanhitech.TGFCSpiderman
             }
             if (status == MillStatus.FormatError)
             {
-                Console.WriteLine("主题页格式发生变化，无法查看...");
+                _outputAction("主题页格式发生变化，无法查看...");
                 //_pageFetchJobRunner.Stop();
                 //_pageSaveJobRunner.Stop();
                 //_pageMillJobRunner.Stop();
             }
             if (status == MillStatus.Success)
             {
-                Console.WriteLine(threadPage.HumanReadableDescription.ChangeStatusInDescription("处理完成"));
+                _outputAction(threadPage.HumanReadableDescription.ChangeStatusInDescription("处理完成"));
                 _pageSaveJobRunner.EnqueueRange(threadPage.Result.Posts);
                 if (threadPage.NextPageUrl == null) return;
                 if (threadPage.NextPageUrl.GetPageIndex() != "1")

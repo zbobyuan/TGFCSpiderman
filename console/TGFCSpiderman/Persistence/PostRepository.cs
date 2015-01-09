@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data.Entity;
+using System.Data.SqlClient;
+using System.Data.SQLite;
 using System.Diagnostics;
 using System.Linq;
 using taiyuanhitech.TGFCSpiderman.CommonLib;
@@ -53,6 +55,16 @@ namespace taiyuanhitech.TGFCSpiderman.Persistence
                     }
                 }
                 db.SaveChanges();
+            }
+        }
+
+        public List<Post> Search(string content)
+        {
+            using (var db = new TgfcDbContext())
+            {
+                db.Database.Log = s => Debug.WriteLine(s);
+                var query = db.Posts.SqlQuery("select * from posts where title like @p0",string.Format("%{0}%",content));
+                return query.ToList();
             }
         }
     }

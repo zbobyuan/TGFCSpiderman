@@ -61,13 +61,13 @@ namespace taiyuanhitech.TGFCSpiderman.Configuration
             {
                 configSection = new TGFCSpidermanSection();
                 configSection.AuthElement.UserName = c.UserName;
-                configSection.AuthElement.Password = c.Password;
+                configSection.AuthElement.AuthToken = c.AuthToken;
                 _config.Sections.Add(SectionName, configSection);
             }
             else
             {
                 configSection.AuthElement.UserName = c.UserName;
-                configSection.AuthElement.Password = c.Password;
+                configSection.AuthElement.AuthToken = c.AuthToken;
             }
 
             _config.Save(ConfigurationSaveMode.Modified);

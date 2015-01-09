@@ -25,7 +25,7 @@ namespace taiyuanhitech.TGFCSpiderman.Configuration
             set { this["later"] = value; }
         }
 
-        public string Password
+        public string AuthToken
         {
             get
             {
