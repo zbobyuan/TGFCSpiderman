@@ -31,12 +31,8 @@ namespace taiyuanhitech.TGFCSpiderman
 
     public class ProcessFaultException : PageMillException
     {
-        public ProcessFaultException(MillRequest request, string message, Exception e)
+        public ProcessFaultException(MillRequest request, string message, Exception e = null)
             : base(request, message, e)
-        {
-        }
-
-        public ProcessFaultException(MillRequest request, string message) : this(request, message, null)
         {
         }
     }

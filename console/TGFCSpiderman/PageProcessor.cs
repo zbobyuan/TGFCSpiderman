@@ -8,76 +8,6 @@ using taiyuanhitech.TGFCSpiderman.CommonLib;
 
 namespace taiyuanhitech.TGFCSpiderman
 {
-    internal static class ProcessorExt
-    {
-        private static readonly Regex ThreadIdRegex = new Regex(@"tid=(\d+)");
-        private static readonly Regex PostIdRegex = new Regex(@"pid=(\d+)");
-        private static readonly Regex PageIndexRegex = new Regex(@"page=(\d+)");
-        private static readonly Regex RatingPeqNRegex = new Regex(@"\+(\d+)/-\d+=\d+");
-        private static readonly Regex RatingPositiveRegex = new Regex(@"\+(\d+)/");
-        private static readonly Regex RatingNegativeRegex = new Regex(@"^/-(\d+)=");
-
-        public static int GetThreadId(this string url)
-        {
-            Match match = ThreadIdRegex.Match(url);
-            return match.Success ? int.Parse(match.Groups[1].Value) : 0;
-        }
-
-        public static int GetPostId(this string url)
-        {
-            Match match = PostIdRegex.Match(url);
-            return match.Success ? int.Parse(match.Groups[1].Value) : 0;
-        }
-
-        public static bool MatchPageIndex(this string url)
-        {
-            return PageIndexRegex.Match(url).Success;
-        }
-
-        public static string GetPageIndex(this string url)
-        {
-            Match matchs = PageIndexRegex.Match(url);
-            return matchs.Success ? matchs.Groups[1].Value : "1";
-        }
-
-        public static Tuple<int, int> GetRatings(this IDomObject messageNode)
-        {
-            int positiveRate = 0, negativeRate = 0;
-            var nextTextNodeOfMessageNode = messageNode.NextSibling;
-            if (nextTextNodeOfMessageNode == null)
-                return new Tuple<int, int>(positiveRate, negativeRate);
-            nextTextNodeOfMessageNode = nextTextNodeOfMessageNode.NextSibling;
-            if (nextTextNodeOfMessageNode != null && nextTextNodeOfMessageNode.NodeType == NodeType.TEXT_NODE
-                && nextTextNodeOfMessageNode.NodeValue.StartsWith("评分记录("))
-            {
-                var text = nextTextNodeOfMessageNode.Cq().Text();
-                var match = RatingPeqNRegex.Match(text);
-                if (match.Success)
-                {//正负相等
-                    positiveRate = negativeRate = int.Parse(match.Groups[1].Value);
-                }
-                else
-                {
-                    if (text.EndsWith("+"))
-                    {
-                        var bNode = nextTextNodeOfMessageNode.NextSibling;
-                        positiveRate = int.Parse(bNode.Cq().Text());
-                        var nextText = bNode.NextSibling.Cq().Text();
-                        negativeRate = int.Parse(RatingNegativeRegex.Match(nextText).Groups[1].Value);
-                    }
-                    else if (text.EndsWith("-"))
-                    {
-                        var bNode = nextTextNodeOfMessageNode.NextSibling;
-                        negativeRate = int.Parse(bNode.Cq().Text());
-                        positiveRate = int.Parse(RatingPositiveRegex.Match(text).Groups[1].Value);
-                    }
-                }
-            }
-
-            return new Tuple<int, int>(positiveRate, negativeRate);
-        }
-    }
-
     public class PageProcessor : IPageProcessor
     {
         public MillResult<List<ThreadHeader>> ProcessForumPage(MillRequest request)
@@ -136,66 +66,7 @@ namespace taiyuanhitech.TGFCSpiderman
 
             if (isFirstPage)
             {
-                var titleNode = bodyCq.Find("b:first").FirstOrDefault();
-                if (titleNode == null)
-                {
-                    throw new ProcessFaultException(request, "无法定位主题的title元素");
-                }
-                thread.Title = titleNode.Cq().Text();
-
-                var dateNode = titleNode.NextSibling;
-                if (dateNode == null)
-                    throw new ProcessFaultException(request, "无法定位发帖日期元素");
-                dateNode = dateNode.NextSibling;
-                if (dateNode == null || dateNode.NodeType != NodeType.TEXT_NODE)
-                    throw new ProcessFaultException(request, "无法定位发帖日期元素");
-                var createDate = DateTime.Parse(dateNode.NodeValue.Replace("时间:", "").Trim());
-
-                var authorLiteralNode = dateNode.NextSibling;
-                if (authorLiteralNode == null)
-                    throw new ProcessFaultException(request, "无法定位主题作者元素");
-                authorLiteralNode = authorLiteralNode.NextSibling;
-                if (authorLiteralNode == null || authorLiteralNode.NodeType != NodeType.TEXT_NODE)
-                    throw new ProcessFaultException(request, "无法定位主题作者元素");
-                var author = authorLiteralNode.NodeValue;
-
-                if (author == "作者:匿名")
-                    thread.UserName = "匿名";
-                else if (author == "作者:")
-                {
-                    var userNameAnchor = authorLiteralNode.NextElementSibling;
-                    if (userNameAnchor == null || userNameAnchor.NodeName.ToUpper() != "A")
-                        throw new ProcessFaultException(request, "无法定位主题作者元素");
-                    thread.UserName = userNameAnchor.Cq().Text().Trim();
-                }
-
-                var messageNode = bodyCq.Find("div.message:first").FirstOrDefault();
-                if (messageNode == null)
-                    throw new ProcessFaultException(request, "无法定位主题内容元素");
-
-                var firstPostHtmlContent = HttpUtility.HtmlDecode(messageNode.InnerHTML);
-                var modifyDate = GetModifyDate(messageNode.Cq(), thread.UserName);
-                var pidAnchor = messageNode.Cq().NextAll("a").FirstElement();
-                if (pidAnchor == null || pidAnchor["href"] == null)
-                    pidAnchor = root.Select("a:contains('引用')").FirstElement();
-                if (pidAnchor == null)
-                    throw new ProcessFaultException(request, "无法定位主题中包含pid的锚元素，无法获取pid");
-                var pid = pidAnchor["href"].GetPostId();
-                var ratings = messageNode.GetRatings();
-                var post = new Post
-                {
-                    Id = pid,
-                    ThreadId = thread.Id,
-                    UserName = thread.UserName,
-                    Title = thread.Title,
-                    Order = 1,
-                    HtmlContent = firstPostHtmlContent,
-                    CreateDate = createDate,
-                    ModifyDate = modifyDate,
-                    PositiveRate = ratings.Item1,
-                    NegativeRate = ratings.Item2,
-                };
-                thread.Posts.Add(post);
+                ProcessFirstPost(request, bodyCq, thread, root);
             }
 
             var infobarNodes = bodyCq.Find("div.infobar");
@@ -203,36 +74,7 @@ namespace taiyuanhitech.TGFCSpiderman
             if (infobarNodes.Length != messageNodes.Length)
                 throw new ProcessFaultException(request, "infobar和message元素个数不一致。");
 
-            if (infobarNodes.Length > 0)
-            {
-                var replies = infobarNodes.Zip(messageNodes, (infobarNode, messageNode) => new { infobarNode, messageNode }).Select((x, index) =>
-                {
-                    var post = new Post
-                    {
-                        ThreadId = thread.Id,
-                        HtmlContent = HttpUtility.HtmlDecode(x.messageNode.InnerHTML)
-                    };
-                    var orderAnchor = x.infobarNode.Cq().Find("b a").FirstElement();
-                    if (orderAnchor == null)
-                        throw new ProcessFaultException(request, string.Format("第{0}个回复无法定位楼层锚元素。", index));
-                    post.Id = orderAnchor["href"].GetPostId();
-                    post.Order = int.Parse(orderAnchor.InnerText.Replace("#", ""));
-
-                    var nextTextNode = orderAnchor.ParentNode.NextSibling;
-                    if (nextTextNode == null || nextTextNode.NodeType != NodeType.TEXT_NODE)
-                        throw new ProcessFaultException(request, string.Format("第{0}个回复无法定位作者元素。", index));
-                    var text = nextTextNode.Cq().Text();
-                    post.UserName = text.Trim().EndsWith("匿名") ? "匿名" : orderAnchor.ParentNode.NextElementSibling.Cq().Text();
-                    post.CreateDate = DateTime.Parse(x.infobarNode.Cq().Find("span.nf:first").Text());
-                    post.ModifyDate = GetModifyDate(x.messageNode.Cq(), post.UserName);
-                    var ratings = x.messageNode.GetRatings();
-                    post.PositiveRate = ratings.Item1;
-                    post.NegativeRate = ratings.Item2;
-
-                    return post;
-                });
-                thread.Posts.AddRange(replies);
-            }
+            ProcessReplies(request, infobarNodes, messageNodes, thread);
 
             var nextPageUrl = isFirstPage ? null : GetNextThreadPageUrl(request, root);
 
@@ -245,7 +87,106 @@ namespace taiyuanhitech.TGFCSpiderman
             };
         }
 
-        private int GetThreadPageCurrentIndex(MillRequest request, CQ root)
+        #region static helper methods
+        private static void ProcessFirstPost(MillRequest request, CQ bodyCq, ForumThread thread, CQ root)
+        {
+            var titleNode = bodyCq.Find("b:first").FirstOrDefault();
+            if (titleNode == null)
+            {
+                throw new ProcessFaultException(request, "无法定位主题的title元素");
+            }
+            thread.Title = titleNode.Cq().Text();
+
+            var dateNode = titleNode.NextSibling;
+            if (dateNode == null)
+                throw new ProcessFaultException(request, "无法定位发帖日期元素");
+            dateNode = dateNode.NextSibling;
+            if (dateNode == null || dateNode.NodeType != NodeType.TEXT_NODE)
+                throw new ProcessFaultException(request, "无法定位发帖日期元素");
+            var createDate = DateTime.Parse(dateNode.NodeValue.Replace("时间:", "").Trim());
+
+            var authorLiteralNode = dateNode.NextSibling;
+            if (authorLiteralNode == null)
+                throw new ProcessFaultException(request, "无法定位主题作者元素");
+            authorLiteralNode = authorLiteralNode.NextSibling;
+            if (authorLiteralNode == null || authorLiteralNode.NodeType != NodeType.TEXT_NODE)
+                throw new ProcessFaultException(request, "无法定位主题作者元素");
+            var author = authorLiteralNode.NodeValue;
+
+            if (author == "作者:匿名")
+                thread.UserName = "匿名";
+            else if (author == "作者:")
+            {
+                var userNameAnchor = authorLiteralNode.NextElementSibling;
+                if (userNameAnchor == null || !"A".Equals(userNameAnchor.NodeName.ToUpper(), StringComparison.OrdinalIgnoreCase))
+                    throw new ProcessFaultException(request, "无法定位主题作者元素");
+                thread.UserName = userNameAnchor.Cq().Text().Trim();
+            }
+
+            var messageNode = bodyCq.Find("div.message:first").FirstElement();
+            if (messageNode == null)
+                throw new ProcessFaultException(request, "无法定位主题内容元素");
+
+            var firstPostHtmlContent = HttpUtility.HtmlDecode(messageNode.InnerHTML);
+            var modifyDate = GetModifyDate(messageNode.Cq(), thread.UserName);
+            var pidAnchor = messageNode.Cq().NextAll("a").FirstElement();
+            if (pidAnchor == null || pidAnchor["href"] == null)
+                pidAnchor = root.Select("a:contains('引用')").FirstElement();
+            if (pidAnchor == null)
+                throw new ProcessFaultException(request, "无法定位主题中包含pid的锚元素，无法获取pid");
+            var pid = pidAnchor["href"].GetPostId();
+            var ratings = messageNode.GetRatings();
+            var post = new Post
+            {
+                Id = pid,
+                ThreadId = thread.Id,
+                UserName = thread.UserName,
+                Title = thread.Title,
+                Order = 1,
+                HtmlContent = firstPostHtmlContent,
+                CreateDate = createDate,
+                ModifyDate = modifyDate,
+                PositiveRate = ratings.Item1,
+                NegativeRate = ratings.Item2,
+            };
+            thread.Posts.Add(post);
+        }
+
+        private static void ProcessReplies(MillRequest request, CQ infobarNodes, CQ messageNodes, ForumThread thread)
+        {
+            if (infobarNodes.Length <= 0) return;
+            var replies = infobarNodes.Zip(messageNodes, (infobarNode, messageNode) => new { infobarNode, messageNode }).Select((x, index) =>
+            {
+                var post = new Post
+                {
+                    ThreadId = thread.Id,
+                    HtmlContent = HttpUtility.HtmlDecode(x.messageNode.InnerHTML)
+                };
+                var orderAnchor = x.infobarNode.Cq().Find("b a").FirstElement();
+                if (orderAnchor == null)
+                    throw new ProcessFaultException(request, string.Format("第{0}个回复无法定位楼层锚元素。", index));
+                post.Id = orderAnchor["href"].GetPostId();
+                post.Order = int.Parse(orderAnchor.InnerText.Replace("#", ""));
+
+                var nextTextNode = orderAnchor.ParentNode.NextSibling;
+                if (nextTextNode == null || nextTextNode.NodeType != NodeType.TEXT_NODE)
+                    throw new ProcessFaultException(request, string.Format("第{0}个回复无法定位作者元素。", index));
+                var text = nextTextNode.Cq().Text();
+                post.UserName = text.Trim().EndsWith("匿名")
+                    ? "匿名"
+                    : orderAnchor.ParentNode.NextElementSibling.Cq().Text();
+                post.CreateDate = DateTime.Parse(x.infobarNode.Cq().Find("span.nf:first").Text());
+                post.ModifyDate = GetModifyDate(x.messageNode.Cq(), post.UserName);
+                var ratings = x.messageNode.GetRatings();
+                post.PositiveRate = ratings.Item1;
+                post.NegativeRate = ratings.Item2;
+
+                return post;
+            });
+            thread.Posts.AddRange(replies);
+        }
+
+        private static int GetThreadPageCurrentIndex(MillRequest request, CQ root)
         {
             if (!request.Url.MatchPageIndex())
                 return 1;
@@ -258,7 +199,7 @@ namespace taiyuanhitech.TGFCSpiderman
             return int.Parse(currentPageIndexNode.InnerText.Replace("##", ""));
         }
 
-        private ThreadHeader GetThreadHeader(IDomObject titleNode, IDomObject authorNode, MillRequest request, int i)
+        private static ThreadHeader GetThreadHeader(IDomObject titleNode, IDomObject authorNode, MillRequest request, int i)
         {
             var titleAnchor = titleNode.Cq().Find("a:first").FirstOrDefault();
             if (titleAnchor == null)
@@ -266,7 +207,7 @@ namespace taiyuanhitech.TGFCSpiderman
 
             var url = titleAnchor["href"];
             var titleText = titleAnchor.Cq().Text().Trim();
-            int threadId = url.GetThreadId();
+            var threadId = url.GetThreadId();
             if (0 == threadId)
                 throw new ProcessFaultException(request, string.Format("无法从第{0}个thread url中获取thread id。", i));
             var header = new ThreadHeader
@@ -293,7 +234,7 @@ namespace taiyuanhitech.TGFCSpiderman
             return header;
         }
 
-        private DateTime? GetModifyDate(CQ postBodyNode, string userName)
+        private static DateTime? GetModifyDate(CQ postBodyNode, string userName)
         {
             var modifyDateElement = postBodyNode.Find("i:last").FirstOrDefault();
 
@@ -309,7 +250,7 @@ namespace taiyuanhitech.TGFCSpiderman
             return dt;
         }
 
-        private void EnsureSignedIn(CQ root, MillRequest request)
+        private static void EnsureSignedIn(CQ root, MillRequest request)
         {
             var signedIn = true;
             var footer = root.Select("div#footer").FirstOrDefault();
@@ -329,13 +270,13 @@ namespace taiyuanhitech.TGFCSpiderman
                 throw new NotSignedInException(request);
         }
 
-        private void EnsurePermissionAllowed(CQ body, MillRequest request)
+        private static void EnsurePermissionAllowed(CQ body, MillRequest request)
         {
             if (body.Text() == "无权查看本主题")
                 throw new PermissionDeniedException(request);
         }
 
-        private string GetNextForumPageUrl(CQ root, MillRequest request)
+        private static string GetNextForumPageUrl(CQ root, MillRequest request)
         {
             var currentPageIndexNode = root.Select("span.paging > span.s1").FirstOrDefault();
             if (currentPageIndexNode == null)
@@ -345,7 +286,7 @@ namespace taiyuanhitech.TGFCSpiderman
             return nextPageNode == null ? null : nextPageNode["href"];
         }
 
-        private string GetNextThreadPageUrl(MillRequest request, CQ root)
+        private static string GetNextThreadPageUrl(MillRequest request, CQ root)
         {
             var currentPageNode = root.Select("span.paging > span.s1").FirstElement();
             if (currentPageNode == null)
@@ -353,6 +294,77 @@ namespace taiyuanhitech.TGFCSpiderman
 
             var previous = currentPageNode.Cq().Prev("a").FirstElement();
             return previous == null ? null : previous["href"];
+        }
+        #endregion
+    }
+
+    internal static class ProcessorExt
+    {
+        private static readonly Regex ThreadIdRegex = new Regex(@"tid=(\d+)");
+        private static readonly Regex PostIdRegex = new Regex(@"pid=(\d+)");
+        private static readonly Regex PageIndexRegex = new Regex(@"page=(\d+)");
+        private static readonly Regex RatingPeqNRegex = new Regex(@"\+(\d+)/-\d+=\d+");
+        private static readonly Regex RatingPositiveRegex = new Regex(@"\+(\d+)/");
+        private static readonly Regex RatingNegativeRegex = new Regex(@"^/-(\d+)=");
+
+        public static int GetThreadId(this string url)
+        {
+            var match = ThreadIdRegex.Match(url);
+            return match.Success ? int.Parse(match.Groups[1].Value) : 0;
+        }
+
+        public static int GetPostId(this string url)
+        {
+            var match = PostIdRegex.Match(url);
+            return match.Success ? int.Parse(match.Groups[1].Value) : 0;
+        }
+
+        public static bool MatchPageIndex(this string url)
+        {
+            return PageIndexRegex.Match(url).Success;
+        }
+
+        public static string GetPageIndex(this string url)
+        {
+            var matchs = PageIndexRegex.Match(url);
+            return matchs.Success ? matchs.Groups[1].Value : "1";
+        }
+
+        public static Tuple<int, int> GetRatings(this IDomObject messageNode)
+        {
+            int positiveRate = 0, negativeRate = 0;
+            var nextTextNodeOfMessageNode = messageNode.NextSibling;
+            if (nextTextNodeOfMessageNode == null)
+                return new Tuple<int, int>(positiveRate, negativeRate);
+            nextTextNodeOfMessageNode = nextTextNodeOfMessageNode.NextSibling;
+            if (nextTextNodeOfMessageNode != null && nextTextNodeOfMessageNode.NodeType == NodeType.TEXT_NODE
+                && nextTextNodeOfMessageNode.NodeValue.StartsWith("评分记录("))
+            {
+                var text = nextTextNodeOfMessageNode.Cq().Text();
+                var match = RatingPeqNRegex.Match(text);
+                if (match.Success)
+                {//正负相等
+                    positiveRate = negativeRate = int.Parse(match.Groups[1].Value);
+                }
+                else
+                {
+                    if (text.EndsWith("+"))
+                    {
+                        var bNode = nextTextNodeOfMessageNode.NextSibling;
+                        positiveRate = int.Parse(bNode.Cq().Text());
+                        var nextText = bNode.NextSibling.Cq().Text();
+                        negativeRate = int.Parse(RatingNegativeRegex.Match(nextText).Groups[1].Value);
+                    }
+                    else if (text.EndsWith("-"))
+                    {
+                        var bNode = nextTextNodeOfMessageNode.NextSibling;
+                        negativeRate = int.Parse(bNode.Cq().Text());
+                        positiveRate = int.Parse(RatingPositiveRegex.Match(text).Groups[1].Value);
+                    }
+                }
+            }
+
+            return new Tuple<int, int>(positiveRate, negativeRate);
         }
     }
 }
