@@ -55,11 +55,11 @@ namespace taiyuanhitech.TGFCSpidermanX
                     _configurationManager.SaveAuthConfig(new AuthConfig {UserName = name, AuthToken = authToken});
                     Password.Password = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
                     _dashboardViewModel.LoginInfoEnabled = false;
-                    Login.Content = "重新登陆";
+                    Login.Content = "重新登录";
                 }
                 catch (CannotSigninException cse)
                 {
-                    MessageBox.Show(string.IsNullOrEmpty(cse.Message) ? "登陆不了，可能是网络不行。" : cse.Message);
+                    MessageBox.Show(string.IsNullOrEmpty(cse.Message) ? "登录不了，可能是网络不行。" : cse.Message);
                     return;
                 }
                 finally
