@@ -3,12 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
-using CsQuery.ExtensionMethods;
 using taiyuanhitech.TGFCSpiderman.CommonLib;
 using taiyuanhitech.TGFCSpiderman.Configuration;
 
@@ -18,50 +15,49 @@ namespace taiyuanhitech.TGFCSpiderman
     {
         private static readonly Regex SigninMessageRegex = new Regex("<div>(.+)</div>");
         private readonly IPageFetcherConfig _config;
-        private readonly HttpClient _httpClient;
         private readonly CookieContainer _cookieContainer;
-        private readonly ManualResetEvent _signinWaitHandle = new ManualResetEvent(true);
-        private bool _hasAuthToken;
+        private readonly HttpClient _httpClient;
 
-        public PageFetcher(IPageFetcherConfig config) : this(config, null)
-        {
-        }
-
-        public PageFetcher(IPageFetcherConfig config, string authToken)
+        public PageFetcher(IPageFetcherConfig config, string authToken = null)
         {
             _config = config;
             _cookieContainer = new CookieContainer();
             if (!string.IsNullOrEmpty(authToken))
             {
-                authToken.Split(',').ForEach(s =>
+                var tokens = authToken.Split(',');
+                foreach (var cookieInfo in tokens.Select(token => token.Split('=')))
                 {
-                    var cookieInfo = s.Split('=');
                     _cookieContainer.Add(new Cookie(cookieInfo[0], cookieInfo[1], "/", ".tgfcer.com"));
-                });
-                _hasAuthToken = true;
+                };
+                HasAuthToken = true;
             }
             var handler = new HttpClientHandler
             {
                 CookieContainer = _cookieContainer,
                 UseCookies = true,
-                UseDefaultCredentials = false,
+                UseDefaultCredentials = false
             };
             _httpClient = new HttpClient(handler)
             {
                 BaseAddress = new Uri("http://wap.tgfcer.com/"),
-                Timeout = TimeSpan.FromSeconds(_config.TimeoutInSeconds) //_httpClient.GetAsync() throws TaskCanceledException
+                Timeout = TimeSpan.FromSeconds(_config.TimeoutInSeconds)
+                //_httpClient.GetAsync() throws TaskCanceledException
             };
             _httpClient.DefaultRequestHeaders.Add("user-agent", _config.UserAgent);
         }
 
+        public void Dispose()
+        {
+            _httpClient.Dispose();
+        }
+
         public async Task<PageFetchResult> Fetch(PageFetchRequest request)
         {
-            _signinWaitHandle.WaitOne(); 
             var result = new PageFetchResult(request);
             HttpResponseMessage responseMessage = null;
             try
             {
-                responseMessage = await _httpClient.GetAsync(request.Url).ConfigureAwait(false);
+                responseMessage = await _httpClient.GetAsync(request.Url);
                 responseMessage.EnsureSuccessStatusCode();
                 using (var content = responseMessage.Content)
                 {
@@ -100,58 +96,48 @@ namespace taiyuanhitech.TGFCSpiderman
 
         public async Task<string> Signin(string userName, string password)
         {
-            _signinWaitHandle.Reset();
             var signedIn = false;
-            try
+            const string url = "index.php?action=login&sid=&vt=1&tp=100&pp=100&sc=0&vf=0&sm=0&iam=&css=&verify=";
+                //TODO:configurable
+            HttpContent content = new FormUrlEncodedContent(new[]
             {
-                const string url = "index.php?action=login&sid=&vt=1&tp=100&pp=100&sc=0&vf=0&sm=0&iam=&css=&verify=";//TODO:configurable
-                HttpContent content = new FormUrlEncodedContent(new[]
-                {
-                    new KeyValuePair<string, string>("username", userName),
-                    new KeyValuePair<string, string>("password", password),
-                    new KeyValuePair<string, string>("login", "登录"),
-                    new KeyValuePair<string, string>("vt", "1")
-                });
+                new KeyValuePair<string, string>("username", userName),
+                new KeyValuePair<string, string>("password", password),
+                new KeyValuePair<string, string>("login", "登录"),
+                new KeyValuePair<string, string>("vt", "1")
+            });
 
-                int retryTimes = 0;
-                while (!signedIn && retryTimes < _config.SigninRetryTimes)
+            var retryTimes = 0;
+            while (!signedIn && retryTimes < _config.SigninRetryTimes)
+            {
+                try
                 {
-                    try
+                    ClearCookie();
+                    var responseMessage = await _httpClient.PostAsync(url, content);
+                    responseMessage.EnsureSuccessStatusCode();
+                    using (var responseContent = responseMessage.Content)
                     {
-                        ClearCookie();
-                        var responseMessage = await _httpClient.PostAsync(url, content);
-                        responseMessage.EnsureSuccessStatusCode();
-                        using (var responseContent = responseMessage.Content)
-                        {
-                            var responseBody = HttpUtility.HtmlDecode(await responseContent.ReadAsStringAsync());
-                            EnsureSignedIn(userName, responseBody);
-                            signedIn = true;
-                        }
-                    }
-                    catch (CannotSigninException)
-                    {
-                        throw;
-                    }
-                    catch
-                    {
-                        retryTimes++;
+                        var responseBody = HttpUtility.HtmlDecode(await responseContent.ReadAsStringAsync());
+                        EnsureSignedIn(userName, responseBody);
+                        signedIn = true;
                     }
                 }
-            }
-            finally
-            {
-                _signinWaitHandle.Set();
+                catch (CannotSigninException)
+                {
+                    throw;
+                }
+                catch
+                {
+                    retryTimes++;
+                }
             }
             if (!signedIn) throw new CannotSigninException("登录不能，原因不明，自己到网页上登录试试吧。");
-            _hasAuthToken = true;
+            HasAuthToken = true;
             var cookies = _cookieContainer.GetCookies(new Uri("http://tgfcer.com/"));
-            return string.Join(",",(from Cookie c in cookies select c.ToString()).ToArray());
+            return string.Join(",", (from Cookie c in cookies select c.ToString()).ToArray());
         }
 
-        public bool HasAuthToken
-        {
-            get { return _hasAuthToken; }
-        }
+        public bool HasAuthToken { get; private set; }
 
         private void ClearCookie()
         {
@@ -164,18 +150,11 @@ namespace taiyuanhitech.TGFCSpiderman
         private static void EnsureSignedIn(string userName, string responseBody)
         {
             var match = SigninMessageRegex.Match(responseBody);
-            if (!match.Success) throw new CannotSigninException("登陆不能，不要问我没什么，自己看看吧。");
+            if (!match.Success) throw new CannotSigninException("登录不能，原因不明，自己到网页上登录试试吧。");
             var message = match.Groups[1].Value;
             if (message.IndexOf(userName + "成功登录", StringComparison.CurrentCulture) >= 0)
                 return;
             throw new CannotSigninException(message);
-        }
-
-        public void Dispose()
-        {
-            _httpClient.Dispose();
-            _signinWaitHandle.Set();
-            _signinWaitHandle.Dispose();
         }
     }
 }
