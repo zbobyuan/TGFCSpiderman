@@ -51,12 +51,21 @@ namespace taiyuanhitech.TGFCSpiderman
             _httpClient.Dispose();
         }
 
-        public async Task<PageFetchResult> Fetch(PageFetchRequest request)
+        public Task<PageFetchResult> Fetch(PageFetchRequest request)
+        {
+            return Fetch(request, 0);
+        }
+
+        public async Task<PageFetchResult> Fetch(PageFetchRequest request, int delay)
         {
             var result = new PageFetchResult(request);
             HttpResponseMessage responseMessage = null;
             try
             {
+                if (delay > 0)
+                {
+                    await Task.Delay(delay);
+                }
                 responseMessage = await _httpClient.GetAsync(request.Url);
                 responseMessage.EnsureSuccessStatusCode();
                 using (var content = responseMessage.Content)
@@ -145,6 +154,7 @@ namespace taiyuanhitech.TGFCSpiderman
             {
                 cookie.Expired = true;
             }
+            HasAuthToken = false;
         }
 
         private static void EnsureSignedIn(string userName, string responseBody)
@@ -155,6 +165,11 @@ namespace taiyuanhitech.TGFCSpiderman
             if (message.IndexOf(userName + "成功登录", StringComparison.CurrentCulture) >= 0)
                 return;
             throw new CannotSigninException(message);
+        }
+
+        public void Signout()
+        {
+            ClearCookie();
         }
     }
 }

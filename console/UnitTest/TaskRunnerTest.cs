@@ -47,7 +47,7 @@ namespace UnitTest
             var runner = new MockJobRunner(3);
             runner.Run();
             strs.ToList().ForEach(runner.EnqueueJob);
-            runner.IdleWaitHandle.WaitOne();
+            runner.Stop();
             Assert.AreEqual(runner.Result, string.Join("", strs));
         }
 
@@ -58,16 +58,11 @@ namespace UnitTest
 
             var runner = new MockJobRunner(3);
             runner.Run();
-            strs.ToList().ForEach(runner.EnqueueJob);
-            runner.IdleWaitHandle.WaitOne();
-
-            runner.Result = "";
-            Console.WriteLine();
 
             strs.Take(2).ToList().ForEach(runner.EnqueueJob);
-            Thread.Sleep(TimeSpan.FromMilliseconds(300));
+            Thread.Sleep(TimeSpan.FromMilliseconds(10000));
             runner.EnqueueRange(strs.Skip(2));
-            runner.IdleWaitHandle.WaitOne();
+            runner.Stop();
             Assert.AreEqual(runner.Result, string.Join("", strs));
         }
     }

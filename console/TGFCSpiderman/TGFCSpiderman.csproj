@@ -109,18 +109,16 @@
     <Compile Include="IPageFetcher.cs" />
     <Compile Include="IPageProcessor.cs" />
     <Compile Include="Persistence\IPostRepository.cs" />
-    <Compile Include="JobQueue\PageMillJobRunner.cs" />
     <Compile Include="JobQueue\PostSaveJobRunner.cs" />
     <Compile Include="MillPageHelper.cs" />
     <Compile Include="PageFetcher.cs" />
     <Compile Include="PageProcessor.cs" />
     <Compile Include="Persistence\PostRepository.cs" />
     <Compile Include="Persistence\TgfcDbContext.cs" />
-    <Compile Include="TaskQueueManager.cs" />
-    <Compile Include="JobQueue\PageFetchJobRunner.cs" />
     <Compile Include="JobQueue\JobRunner.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TaskQueueManager.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config">

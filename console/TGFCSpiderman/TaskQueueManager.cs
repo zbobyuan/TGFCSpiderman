@@ -8,280 +8,271 @@ using System.Threading;
 using NLog;
 using taiyuanhitech.TGFCSpiderman.CommonLib;
 using taiyuanhitech.TGFCSpiderman.JobQueue;
+using System.Threading.Tasks;
 
 namespace taiyuanhitech.TGFCSpiderman
 {
     public class TaskQueueManager
     {
+        public enum RunningMode
+        {
+            Single,
+            Cycle,
+        }
+
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         private const int InitialRetryInterval = 100;//TODO:configurable
-        private const int ForumPageMaxRetryCount = 15;
-        private const int ThreadPageMaxRetryCount = 10;
+        private const int ForumPageMaxRetryTimes = 15;
+        private const int ThreadPageMaxRetryTimes = 10;
+        private const int PageFetchBatchSize = 3;
         private const int MaxRetryInterval = InitialRetryInterval * (2 << 10);
-        private static readonly TaskQueueManager _inst;
+        private const int CycleInterval = 10;
         private readonly IPageFetcher _pageFetcher;
         private readonly IPageProcessor _pageProcessor;
-        private readonly PageFetchJobRunner _pageFetchJobRunner;
-        private readonly PageMillJobRunner _pageMillJobRunner;
         private readonly PostSaveJobRunner _pageSaveJobRunner;
-        private string _userName;
-        private string _password;
-        private DateTime _expirationDate;
         private Dictionary<string, int> _retryCounter;
         private readonly HashSet<int> _excludedThreadIds = new HashSet<int> { 7041501, 7018450, 6685754 };
-        private Action<string> _outputAction;
+        private readonly Action<string> _outputAction;
 
-        static TaskQueueManager()
+        public TaskQueueManager(IPageFetcher pageFetcher, IPageProcessor pageProcessor, Action<string> outputAction)
         {
-            _inst = new TaskQueueManager();
-        }
-
-        private TaskQueueManager()
-        {
-            _pageFetchJobRunner = new PageFetchJobRunner(_pageFetcher = ComponentFactory.GetPageFetcher());
-            _pageFetchJobRunner.Run();
-            _pageMillJobRunner = new PageMillJobRunner(_pageProcessor = ComponentFactory.GetPageProcessor());
-            _pageMillJobRunner.Run();
+            _pageFetcher = pageFetcher;
+            _pageProcessor = pageProcessor;
+            _outputAction = outputAction;
             _pageSaveJobRunner = new PostSaveJobRunner(ComponentFactory.GetPostRepository());
-            _pageSaveJobRunner.Run();
         }
 
-        public static TaskQueueManager Inst
+        public async Task Run(string entryPointUrl, DateTime expirationDate, CancellationToken ct, RunningMode mode = RunningMode.Single)
         {
-            get { return _inst; }
-        }
+            if (string.IsNullOrEmpty(entryPointUrl))
+                throw new ArgumentNullException("entryPointUrl");
 
-        public void Run(DateTime expirationDate, Action<string> outputAction)
-        {
-            Run("", "", expirationDate, outputAction);
-        }
-
-        public void Run(string userName, string password, DateTime expirationDate)
-        {
-            Run(userName, password, expirationDate, Console.WriteLine);
-        }
-
-        public void Run(string userName, string password, DateTime expirationDate, Action<string> outputAction)
-        {
-            _outputAction = outputAction ?? Console.WriteLine;
-            _expirationDate = expirationDate;
-            _userName = userName;
-            _password = password;
+            var rawEntryPointUrl = entryPointUrl;
+            var lastCycleStartTime = DateTime.Now;
+            var fetchQueue = new Queue<PageFetchRequest>();
             _retryCounter = new Dictionary<string, int>();
-            var stopwatch = new Stopwatch();
-            stopwatch.Start();
+            _pageSaveJobRunner.Run();
+            var watch = Stopwatch.StartNew();
             try
             {
-                var entryPointUrl = "index.php?action=forum&fid=25&vt=1&tp=100&pp=100&sc=1&vf=0&sm=0&iam=notop-nolight-noattach&css=default&page=1";
                 for (; ; )
                 {
-                    if (entryPointUrl == null)
-                        return;
-                    _outputAction(string.Format("正在获取论坛第 {0} 页。", entryPointUrl.GetPageIndex()));
-                    var entryPointFetchResult = FetchPage(entryPointUrl);
-                    if (entryPointFetchResult == null)
+                    if (string.IsNullOrEmpty(entryPointUrl))
                     {
-                        string error = string.Format("无法获取论坛第 {0} 页，URL:{1}\r\n退出运行。", entryPointUrl.GetPageIndex(), entryPointUrl);
+                        if (mode == RunningMode.Single) return;
+                        else
+                        {
+                            entryPointUrl = rawEntryPointUrl;
+                            expirationDate = lastCycleStartTime;
+                            _outputAction(string.Format("运行完成，等待{0}分钟后重新开始。", CycleInterval));
+                            try
+                            {
+                                await Task.Delay(CycleInterval*60*1000, ct);
+                            }
+                            catch (TaskCanceledException)//CancellationTokenSource is canceled.
+                            {
+                                ct.ThrowIfCancellationRequested();
+                            }
+                            
+                            lastCycleStartTime = DateTime.Now;
+                        }
+                    }
+                    _outputAction(string.Format("正在获取论坛第 {0} 页，截止时间:{1}。", entryPointUrl.GetPageIndex(), expirationDate));
+
+                    var entryPointHtmlContent = await FetchPageContent(entryPointUrl, ForumPageMaxRetryTimes);
+                    if (entryPointHtmlContent == null)
+                    {
+                        var error = string.Format("无法获取论坛第 {0} 页，URL:{1}\r\n退出运行。", entryPointUrl.GetPageIndex(), entryPointUrl);
                         Logger.Error(error);
                         _outputAction(error);
-                        return;
+                        throw new Exception("erorr");
                     }
 
                     MillResult<List<ThreadHeader>> forumPageMillResult;
-                    MillStatus processStatus = _pageProcessor.TryProcessPage(
-                            new MillRequest { Url = entryPointUrl, HtmlContent = entryPointFetchResult },
+                    var processStatus = _pageProcessor.TryProcessPage( new MillRequest { Url = entryPointUrl, HtmlContent = entryPointHtmlContent },
                             out forumPageMillResult);
-                    if (processStatus == MillStatus.FormatError)
+
+                    if (processStatus != MillStatus.Success)
                     {
-                        _outputAction(string.Format("分析网页结构时发生错误，本系统将停止执行。Url : {0}", entryPointUrl));
-                        return;
-                    }
-                    if (processStatus == MillStatus.NotSignedIn)
-                    {
-                        _pageFetcher.Signin(userName, password);//TODO:what if it throws?
-                        continue;
-                    }
-                    if (processStatus == MillStatus.PermissionDenied)
-                    {
-                        _outputAction(string.Format("您提供的用户没有访问主题列表的权限，本系统将停止执行。Url : {0}", entryPointUrl));
+                        HandleForumPageMillError(entryPointUrl, processStatus);
                         return;
                     }
 
-                    //找到最后一个thread 的最后reply date
-                    var threadHeasers = forumPageMillResult.Result;
-                    int currentIndex = threadHeasers.Count - 1;
-                    for (; ; )
+                    var threadHeaders = forumPageMillResult.Result.Where(t => !_excludedThreadIds.Contains(t.Id)).ToList();
+                    var currentIndex = 0;
+                    while (currentIndex < threadHeaders.Count)
                     {
-                        if (currentIndex < 0)
+                        var requests = new List<PageFetchRequest>(PageFetchBatchSize);
+                        for (var i = 0; i < PageFetchBatchSize && currentIndex < threadHeaders.Count; i++, currentIndex++)
                         {
-                            //一页的所有thread都没有权限看
-                            entryPointUrl = forumPageMillResult.NextPageUrl;
+                            var header = threadHeaders[currentIndex];
+                            requests.Add(new PageFetchRequest(header.Url.ChangePageIndex(header.GetLastPageIndex()),
+                                header.ToDescription().ChangePageIndexInDescription(header.GetLastPageIndex())));
+                        }
+                        var oldestReplyDate = await ProcessThreadPageRequests(requests, expirationDate, fetchQueue);
+                        if (oldestReplyDate < expirationDate)
+                        {
+                            //以下的肯定是更旧的贴，无需再看了，跳出while循环，处理fetchQueue。
+                            entryPointUrl = null;
                             break;
                         }
-                        var header = threadHeasers[currentIndex];
-                        var lastReplyPageUrl = header.Url.ChangePageIndex(header.GetLastPageIndex());
-                        _outputAction(string.Format("主题列表第 {0} 个主题最后一页正在获取。", currentIndex + 1));
-                        var threadLastPageFetchResult = FetchPage(lastReplyPageUrl);
-                        if (threadLastPageFetchResult == null)
+                        //TODO:Delay 
+                    } //while
+                    if (currentIndex >= threadHeaders.Count)
+                    {
+                        //curentIndex达到了最大，说明这一页的全部thread都是新的，有必要看下一页
+                        entryPointUrl = forumPageMillResult.NextPageUrl;
+                    }
+                    //开始处理fetchQueue中
+                    while (fetchQueue.Count > 0)
+                    {
+                        var requests = new List<PageFetchRequest>(PageFetchBatchSize);
+                        for (var i = 0; i < PageFetchBatchSize && fetchQueue.Count > 0; i++)
                         {
-                            _outputAction(string.Format("主题列表第 {0} 个主题最后一页无法获取，尝试上一个主题。", currentIndex + 1));
-                            currentIndex--;
-                            continue;
+                            requests.Add(fetchQueue.Dequeue());
                         }
-                        _outputAction("获取完成。");
-                        MillResult<ForumThread> threadLastPageProcessResult;
-                        processStatus = _pageProcessor.TryProcessPage(
-                                new MillRequest { Url = lastReplyPageUrl, HtmlContent = threadLastPageFetchResult },
-                                out threadLastPageProcessResult);
-
-                        if (processStatus == MillStatus.NotSignedIn)
-                        {
-                            _pageFetcher.Signin(userName, password);
-                            //TODO:what if it throws UserNameOrPasswordException? Need to impllment ask password and re-enter.
-                            continue;
-                        }
-                        if (processStatus == MillStatus.FormatError)
-                        {
-                            _outputAction(string.Format("分析网页结构时发生错误，正在尝试列表中的上一个主题。Url : {0}", lastReplyPageUrl));
-                            currentIndex--;
-                            continue;
-                        }
-                        if (processStatus == MillStatus.PermissionDenied)
-                        {
-                            _outputAction(string.Format("您提供的用户没有访问该主题的权限，正在尝试列表中的上一个主题。Url : {0}", entryPointUrl));
-                            currentIndex--; //尝试上一个thread
-                            continue;
-                        }
-
-                        var posts = threadLastPageProcessResult.Result.Posts;
-                        var lastReplyDate = posts.Last().ModifyDate ?? posts.Last().CreateDate;
-
-                        if (lastReplyDate < expirationDate)
-                        {
-                            //todo:找出确切的最晚的一个早于expirationDate的thread，处理这个thread及比它更晚（在threadHeaders中序号更小）的thread
-                            HandleThreads(threadHeasers.Where(t => !_excludedThreadIds.Contains(t.Id)));
-                            return; //全处理完了，没了
-                        }
-                        else
-                        {
-                            //下一页可能还有更新的，先处理本页的，再到下一页看看。
-                            HandleThreads(threadHeasers.Where(t => !_excludedThreadIds.Contains(t.Id)));
-                            entryPointUrl = forumPageMillResult.NextPageUrl;
-                            break;
-                        }
+                        await ProcessThreadPageRequests(requests, expirationDate, fetchQueue);
+                        //TODO:Delay 
                     }
                 }
             }
             finally
             {
-                stopwatch.Stop();
-                _outputAction(string.Format("运行完成，耗时 {0} 秒，约{1:0.0}分钟", stopwatch.Elapsed.TotalSeconds, stopwatch.Elapsed.TotalSeconds / 60.0));
+                _pageSaveJobRunner.Stop();
+                watch.Stop();
+                _outputAction(string.Format("运行完成，耗时 {0} 秒，约{1:0.0}分钟", watch.Elapsed.TotalSeconds, watch.Elapsed.TotalSeconds / 60.0));
             }
         }
 
-        private void HandleThreads(IEnumerable<ThreadHeader> threadHeasers)
+        private void HandleForumPageMillError(string entryPointUrl, MillStatus processStatus)
         {
-            _pageFetchJobRunner.EnqueueRange(
-                threadHeasers.Select(t =>
-                {
-                    t.Url = t.Url.ChangePageIndex(t.GetLastPageIndex());
-                    return new PageFetchRequest(t.Url, t.ToDescription());
-                }));
-            WaitHandle.WaitAll(new[] { _pageFetchJobRunner.IdleWaitHandle, _pageMillJobRunner.IdleWaitHandle, _pageSaveJobRunner.IdleWaitHandle });
+            if (processStatus == MillStatus.FormatError)
+            {
+                _outputAction(string.Format("分析主题列表页结构时发生错误，本系统将停止执行。Url : {0}", entryPointUrl));
+                throw new Exception("erorr");//TODO:是否使用自定义的异常？目前来看没什么必要。下同。
+            }
+            if (processStatus == MillStatus.NotSignedIn)
+            {
+                _outputAction(string.Format("登录信息失效，本系统将停止执行。将来会支持重新登录后继续运行。Url : {0}", entryPointUrl));
+                throw new Exception("erorr");
+            }
+            if (processStatus == MillStatus.PermissionDenied)
+            {
+                _outputAction(string.Format("您提供的用户没有访问主题列表的权限，本系统将停止执行。Url : {0}", entryPointUrl));
+                throw new Exception("error");
+            }
         }
 
-        public void OnPageFetchCompleted(PageFetchResult result)
+        private async Task<DateTime> ProcessThreadPageRequests(IEnumerable<PageFetchRequest> requests, DateTime expirationDate, Queue<PageFetchRequest> fetchQueue)
         {
-            if (result.Error == null)
+            var rt = DateTime.MaxValue;
+            var tasks = requests.Select((r, i) => _pageFetcher.Fetch(r, i * InitialRetryInterval)).ToList();
+            while (tasks.Count > 0)
             {
-                if (result.Content != null)
+                var completedTask = await Task.WhenAny(tasks);
+                if (completedTask.Status == TaskStatus.RanToCompletion)
                 {
-                    _pageMillJobRunner.EnqueueJob(new MillRequest
+                    if (completedTask.Result.Error == null)
                     {
-                        Url = result.Url,
-                        HtmlContent = result.Content,
-                        HumanReadableDescription = result.HumanReadableDescription
-                    });
-                }
-                return;
-            }
-
-            if (result.Error.IsConnectionError)
-            {//可能是连不上网，或者网站服务器关了
-                _outputAction(result.HumanReadableDescription.ChangeStatusInDescription("网络不通"));
-                return;
-            }
-            if (result.Error.IsTimeout)
-            {//超时
-                _outputAction(result.HumanReadableDescription.ChangeStatusInDescription("请求超时"));
-            }
-            else if (result.Error.StatusCode != HttpStatusCode.OK)
-            {//服务器返回错误信息
-                _outputAction(result.HumanReadableDescription.ChangeStatusInDescription("请求错误"));
-            }
-            var retryCount = GetRetryCount(result.Url) + 1;
-            if (retryCount >= ThreadPageMaxRetryCount)
-            {
-                Logger.Error("获取URL:{0}重试次数达到上限{1}，不再继续尝试。", result.Url, ThreadPageMaxRetryCount);
-                _retryCounter.Remove(result.Url);
-                return;
-            }
-            _retryCounter[result.Url] = retryCount + 1;
-            _pageFetchJobRunner.EnqueueJob(result);
-        }
-
-        public void OnThreadPageMillCompleted(MillStatus status, MillResult<ForumThread> threadPage)
-        {
-            if (status == MillStatus.NotSignedIn)
-            {
-                _pageFetcher.Signin(_userName, _password);
-                _pageFetchJobRunner.EnqueueJob(new PageFetchRequest(threadPage.Url, "post not signed in"));
-                return;
-            }
-            if (status == MillStatus.PermissionDenied)
-            {
-                //看不了，无视
-            }
-            if (status == MillStatus.FormatError)
-            {
-                _outputAction("主题页格式发生变化，无法查看...");
-                //_pageFetchJobRunner.Stop();
-                //_pageSaveJobRunner.Stop();
-                //_pageMillJobRunner.Stop();
-            }
-            if (status == MillStatus.Success)
-            {
-                _outputAction(threadPage.HumanReadableDescription.ChangeStatusInDescription("处理完成"));
-                _pageSaveJobRunner.EnqueueRange(threadPage.Result.Posts);
-                if (threadPage.NextPageUrl == null) return;
-                if (threadPage.NextPageUrl.GetPageIndex() != "1")
-                {
-                    var oldestPost = threadPage.Result.Posts.First();
-                    if (oldestPost.CreateDate < _expirationDate)
-                    {
-                        threadPage.NextPageUrl = threadPage.NextPageUrl.ChangePageIndex(1);
+                        MillResult<ForumThread> threadLastPageProcessResult;
+                        var processStatus = _pageProcessor.TryProcessPage(new MillRequest
+                        {
+                            Url = completedTask.Result.Url,
+                            HtmlContent = completedTask.Result.Content,
+                            HumanReadableDescription = completedTask.Result.HumanReadableDescription
+                        }, out threadLastPageProcessResult);
+                        switch (processStatus)
+                        {
+                            case MillStatus.Success:
+                                _outputAction(threadLastPageProcessResult.HumanReadableDescription.ChangeStatusInDescription("处理完成"));
+                                var thread = threadLastPageProcessResult.Result;
+                                _pageSaveJobRunner.EnqueueRange(thread.Posts);
+                                var lastPost = thread.Posts.Last();
+                                var lastReplyDate = lastPost.ModifyDate ?? lastPost.CreateDate;
+                                if (lastReplyDate < rt)
+                                {
+                                    rt = lastReplyDate;
+                                }
+                                if (threadLastPageProcessResult.NextPageUrl != null)
+                                {
+                                    if (threadLastPageProcessResult.NextPageUrl.GetPageIndex() != "1")
+                                    {
+                                        var oldestPost = thread.Posts.First();
+                                        if (oldestPost.CreateDate < expirationDate)
+                                        {
+                                            //本页最旧的reply总是比上一页最新的reply新，所以如果本页最旧reply发表时间不再获取范围内，上一页肯定不在，直接跳到第一页。
+                                            //无论如何看一下第一页是有意义的，因为挖坟的人主要针对第一页上的主题贴。
+                                            threadLastPageProcessResult.NextPageUrl =
+                                                threadLastPageProcessResult.NextPageUrl.ChangePageIndex(1);
+                                        }
+                                    }
+                                    fetchQueue.Enqueue(new PageFetchRequest(
+                                        threadLastPageProcessResult.NextPageUrl,
+                                        threadLastPageProcessResult.HumanReadableDescription
+                                            .ChangePageIndexInDescription(
+                                                int.Parse(threadLastPageProcessResult.NextPageUrl.GetPageIndex()))));
+                                }
+                                break;
+                            case MillStatus.FormatError:
+                                _outputAction(completedTask.Result.HumanReadableDescription.ChangeStatusInDescription("无法解析"));
+                                break;
+                            case MillStatus.PermissionDenied:
+                                _outputAction(completedTask.Result.HumanReadableDescription.ChangeStatusInDescription("没权限看"));
+                                break;
+                            case MillStatus.NotSignedIn:
+                                _outputAction(completedTask.Result.HumanReadableDescription.ChangeStatusInDescription("无法登录"));
+                                break;
+                        }
                     }
-                }
-                _pageFetchJobRunner.EnqueueJob(new PageFetchRequest(threadPage.NextPageUrl,
-                    threadPage.HumanReadableDescription.ChangePageIndexInDescription(int.Parse(threadPage.NextPageUrl.GetPageIndex()))));
+                    else
+                    {//连接错误或超时，重试
+                        var result = completedTask.Result;
+                        if (result.Error.IsConnectionError)
+                        {//可能是连不上网，或者网站服务器关了
+                            _outputAction(result.HumanReadableDescription.ChangeStatusInDescription("网络不通"));
+                        }
+                        else if (result.Error.IsTimeout)
+                        {//超时
+                            _outputAction(result.HumanReadableDescription.ChangeStatusInDescription("请求超时"));
+                        }
+                        else if (result.Error.StatusCode != HttpStatusCode.OK)
+                        {//服务器返回错误信息
+                            _outputAction(result.HumanReadableDescription.ChangeStatusInDescription("请求错误"));
+                        }
+                        var retryCount = GetRetryCount(result.Url);
+                        if (retryCount < ThreadPageMaxRetryTimes)
+                        {
+                            fetchQueue.Enqueue(result);
+                            _retryCounter[result.Url] = retryCount + 1;
+                        }
+                        else
+                        {
+                            Logger.Error("获取URL:{0}重试次数达到上限{1}，不再继续尝试。", result.Url, ThreadPageMaxRetryTimes);
+                            _outputAction(result.HumanReadableDescription.ChangeStatusInDescription("不再重试"));
+                            _retryCounter.Remove(completedTask.Result.Url);
+                        }
+                    }
+                }//else,不知道该怎么办，忽略吧。
+                tasks.Remove(completedTask);
             }
+            return rt;
         }
 
-        private string FetchPage(string url)
+        private async Task<string> FetchPageContent(string url, int maxRetryTimes)
         {
-            int retryInterval = InitialRetryInterval;
+            var retryInterval = InitialRetryInterval;
             PageFetchResult result;
-            while ((result = _pageFetcher.Fetch(new PageFetchRequest(url, null)).Result).Content == null)
+            while ((result = await _pageFetcher.Fetch(new PageFetchRequest(url))).Content == null)
             {
                 var retryCount = GetRetryCount(url);
-                if (retryCount + 1 >= ForumPageMaxRetryCount)
+                if (retryCount + 1 >= maxRetryTimes)
                 {
                     _retryCounter.Remove(url);
                     return null;
                 }
                 _retryCounter[url] = retryInterval + 1;
 
-                Thread.Sleep(TimeSpan.FromMilliseconds(retryInterval));
+                await Task.Delay(TimeSpan.FromMilliseconds(retryInterval));
                 retryInterval *= 2;
                 if (retryInterval > MaxRetryInterval)
                     retryInterval = InitialRetryInterval;
@@ -296,6 +287,7 @@ namespace taiyuanhitech.TGFCSpiderman
         }
     }
 
+    #region static extensions
     public static class ThreadHeaderExt
     {
         public static string ChangePageIndex(this string url, int newPageIndex)
@@ -331,7 +323,7 @@ namespace taiyuanhitech.TGFCSpiderman
 
         public static string ChangeStatusInDescription(this string desc, string status)
         {
-            Regex statusRex = new Regex("\t.{4}\t");
+            var statusRex = new Regex("\t.{4}\t");
             return statusRex.Replace(desc, "\t" + status.ToFixedLength(4) + "\t");
         }
     }
@@ -357,4 +349,5 @@ namespace taiyuanhitech.TGFCSpiderman
             throw new Exception("weird!");
         }
     }
+    #endregion
 }

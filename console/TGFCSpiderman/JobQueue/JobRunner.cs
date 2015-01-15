@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 
 namespace taiyuanhitech.TGFCSpiderman.JobQueue
@@ -7,23 +9,8 @@ namespace taiyuanhitech.TGFCSpiderman.JobQueue
     public abstract class JobRunner<TRequest>
         where TRequest : class
     {
-        private readonly ManualResetEvent _idleWaitHandle = new ManualResetEvent(false);
-        private readonly AutoResetEvent _jobAvailableWaitHandle = new AutoResetEvent(false);
-        private readonly Queue<TRequest> _jobQueue = new Queue<TRequest>();
-        private readonly object _queueLocker = new object();
-        private readonly Thread _worker;
-        protected bool Shutdown;
-        private bool _running;
-
-        protected JobRunner()
-        {
-            _worker = new Thread(DoWork) {IsBackground = true};
-        }
-
-        public WaitHandle IdleWaitHandle
-        {
-            get { return _idleWaitHandle; }
-        }
+        private BlockingCollection<TRequest> _jobQueue;
+        private Thread _worker;
 
         protected virtual int BatchSize
         {
@@ -32,78 +19,70 @@ namespace taiyuanhitech.TGFCSpiderman.JobQueue
 
         public void Run()
         {
+            if (_worker != null)
+            {
+                throw new InvalidOperationException("Cannot run a runner whick is running.");
+            }
+            _jobQueue = new BlockingCollection<TRequest>();
+            _worker = new Thread(DoWork) { IsBackground = true };
             _worker.Start();
-            _running = true;
         }
 
         public void EnqueueJob(TRequest job)
         {
-            EnqueueRange(FromSingle(job));
+            _jobQueue.Add(job);
         }
 
         public void EnqueueRange(IEnumerable<TRequest> jobs)
         {
-            if (Shutdown) return;
-            if (_running) _idleWaitHandle.Reset();
-            lock (_queueLocker)
+            foreach (var job in jobs)
             {
-                foreach (var j in jobs)
-                {
-                    _jobQueue.Enqueue(j);
-                }
+                EnqueueJob(job);
             }
-            _jobAvailableWaitHandle.Set();
         }
 
         public void Stop()
         {
-            _running = false;
-            Shutdown = true;
-            _jobAvailableWaitHandle.Set();
+            _jobQueue.CompleteAdding();
+            if (_worker != null)
+            {
+                _worker.Join();
+                _worker = null;
+            }
         }
         protected abstract void ExecuteJobs(List<TRequest> jobs);
 
         protected void DoWork()
         {
-            while ((!Shutdown))
+            var jobs = new List<TRequest>(BatchSize);
+            var currentIndex = 0;
+            foreach (var job in _jobQueue.GetConsumingEnumerable())
             {
-                List<TRequest> jobs = null;
-                lock (_queueLocker)
+                jobs.Add(job);
+                currentIndex++;
+                if (currentIndex == BatchSize)
                 {
-                    if (_jobQueue.Count > 0)
-                    {
-                        jobs = new List<TRequest>(BatchSize);
-                        while (_jobQueue.Count > 0 && jobs.Count < BatchSize)
-                        {
-                            jobs.Add(_jobQueue.Dequeue());
-                        }
-                    }
-                }
-
-                if (jobs == null)
-                {
-                    _idleWaitHandle.Set();
-                    _jobAvailableWaitHandle.WaitOne();
-                }
-                else
-                {
-                    _idleWaitHandle.Reset();
-                    try
-                    {
-                        ExecuteJobs(jobs);
-                    }
-                    catch(Exception e)
-                    {
-                        Console.WriteLine("未知错误:{0}", e);
-                    }
+                    ExecuteJobs2(jobs);
+                    currentIndex = 0;
+                    jobs.Clear();
                 }
             }
-            _idleWaitHandle.Set();
+            if (jobs.Count > 0)
+            {
+                ExecuteJobs2(jobs);
+            }
         }
 
-        private static IEnumerable<T> FromSingle<T>(T o)
+        private void ExecuteJobs2(List<TRequest> jobs)
         {
-            yield return o;
+            try
+            {
+                ExecuteJobs(jobs);
+            }
+            catch (Exception e)
+            {
+                Debug.WriteLine("JobRunner未知错误:{0}", e);
+            }
         }
     }
 }

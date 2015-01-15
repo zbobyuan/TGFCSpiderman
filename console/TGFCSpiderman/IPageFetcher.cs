@@ -7,7 +7,9 @@ namespace taiyuanhitech.TGFCSpiderman
     public interface IPageFetcher
     {
         Task<PageFetchResult> Fetch(PageFetchRequest request);
+        Task<PageFetchResult> Fetch(PageFetchRequest request, int delayInMilliseconds);
         Task<string> Signin(string userName, string password);
+        void Signout();
         bool HasAuthToken { get; }
     }
 

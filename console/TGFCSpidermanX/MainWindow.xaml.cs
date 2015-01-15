@@ -1,43 +1,43 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Globalization;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Threading;
-using MahApps.Metro.Controls;
+using System.Windows.Input;
 using taiyuanhitech.TGFCSpiderman;
 using taiyuanhitech.TGFCSpiderman.Configuration;
 using taiyuanhitech.TGFCSpidermanX.ViewModel;
 
 namespace taiyuanhitech.TGFCSpidermanX
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow
     {
         private readonly ConfigurationManager _configurationManager = new ConfigurationManager();
         private readonly Dashboard _dashboardViewModel;
+        private CancellationTokenSource _cts;
 
         public MainWindow()
         {
             InitializeComponent();
-            _dashboardViewModel = (Dashboard) FindResource("DashboardViewModel");
+            _dashboardViewModel = (Dashboard)FindResource("DashboardViewModel");
             var authConfig = _configurationManager.GetAuthConfig();
             _dashboardViewModel.UserName = authConfig.UserName;
+            ExpirationDate.SelectedDate = DateTime.Now.AddDays(-1);
 
             if (string.IsNullOrEmpty(_dashboardViewModel.UserName))
             {
                 _dashboardViewModel.LoginInfoEnabled = true;
+                UserNameBox.Focus();
+            }
+            else if (string.IsNullOrEmpty(authConfig.AuthToken))
+            {
+                _dashboardViewModel.LoginInfoEnabled = true;
+                Password.Focus();
             }
             else
             {
                 Password.Password = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-                Login.Content = "重新登陆";
+                Login.Content = "退出";
             }
         }
 
@@ -46,66 +46,162 @@ namespace taiyuanhitech.TGFCSpidermanX
             if (_dashboardViewModel.LoginInfoEnabled)
             {
                 Login.IsEnabled = false;
+                _dashboardViewModel.LoginInfoEnabled = false;
+
                 var pageFetcher = ComponentFactory.GetPageFetcher();
+                var isSignedIn = false;
                 try
                 {
                     var name = _dashboardViewModel.UserName;
                     var password = Password.Password;
+                    if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(password))
+                    {
+                        //TODO:Use wpf data validation
+                        MessageBox.Show("别瞎输、瞎点。");
+                        return;
+                    }
+                    SigninProgress.Visibility = Visibility.Visible;
                     var authToken = await pageFetcher.Signin(name, password);
-                    _configurationManager.SaveAuthConfig(new AuthConfig {UserName = name, AuthToken = authToken});
+                    isSignedIn = true;
+                    _configurationManager.SaveAuthConfig(new AuthConfig { UserName = name, AuthToken = authToken });
                     Password.Password = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
                     _dashboardViewModel.LoginInfoEnabled = false;
-                    Login.Content = "重新登录";
+                    Login.Content = "退出";
                 }
                 catch (CannotSigninException cse)
                 {
                     MessageBox.Show(string.IsNullOrEmpty(cse.Message) ? "登录不了，可能是网络不行。" : cse.Message);
-                    return;
                 }
                 finally
                 {
                     Login.IsEnabled = true;
+                    SigninProgress.Visibility = Visibility.Hidden;
+                    if (!isSignedIn)
+                    {
+                        _dashboardViewModel.LoginInfoEnabled = true;
+                        if (string.IsNullOrWhiteSpace(_dashboardViewModel.UserName))
+                        {
+                            UserNameBox.Focus();
+                        }
+                        else
+                        {
+                            Password.Focus();
+                        }
+                    }
                 }
             }
             else
             {
+                ComponentFactory.GetPageFetcher().Signout();
+                _configurationManager.SaveAuthConfig(new AuthConfig { UserName = _dashboardViewModel.UserName, AuthToken = "" });
                 _dashboardViewModel.LoginInfoEnabled = true;
                 Password.Clear();
+                Password.Focus();
                 Login.Content = "登录";
             }
         }
 
         private async void Run_OnClick(object sender, RoutedEventArgs e)
         {
-            //OutputBox.AppendText(DateTime.Now + Environment.NewLine);
-            //OutputBox.ScrollToEnd();
-            Run.IsEnabled = false;
+            if (_cts != null)
+            {
+                _cts.Cancel();
+                var newCts = new CancellationTokenSource();
+                _cts = newCts;
+                return;
+            }
             if (!ComponentFactory.GetPageFetcher().HasAuthToken)
             {
                 MessageBox.Show("先登录。");
+                Run.Content = "运行";
                 return;
             }
-            await Task.Run(()=>
-            TaskQueueManager.Inst.Run(DateTime.Now.AddDays(-1), s =>
-            {
-                if (System.Threading.Thread.CurrentThread == OutputBox.Dispatcher.Thread)
+            Run.Content = "取消";
+            RunProgress.Visibility = Visibility.Visible;
+            Login.IsEnabled = false;
+            OutputBox.Clear();
+            var outputCount = 0;
+            var taskManager = new TaskQueueManager(ComponentFactory.GetPageFetcher(),
+                ComponentFactory.GetPageProcessor(), s =>
                 {
-                    OutputBox.AppendText(s + Environment.NewLine);
-                    OutputBox.ScrollToEnd();
-                }
-                else
-                {
-                    OutputBox.Dispatcher.InvokeAsync(() =>
+                    Action output = () =>
+                        {
+                            if (outputCount++ > 200)
+                            {
+                                OutputBox.Clear();
+                                outputCount = 0;
+                            }
+                            OutputBox.AppendText(s + Environment.NewLine);
+                            OutputBox.ScrollToEnd();
+                        };
+                    if (Thread.CurrentThread == OutputBox.Dispatcher.Thread)
                     {
-                        OutputBox.AppendText(s + Environment.NewLine);
-                        OutputBox.ScrollToEnd();
-                    });
-                }
-            }));
-            Run.IsEnabled = true;
+                        output();
+                    }
+                    else
+                    {
+                        OutputBox.Dispatcher.InvokeAsync(output);
+                    }
+                });
+            var entryPointUrl = GetEntryPointUrl();
+            _cts = new CancellationTokenSource();
+            try
+            {
+                await taskManager.Run(entryPointUrl, GetExpirationDate(), _cts.Token, GetRunningMode());
+            }
+            catch (OperationCanceledException)
+            {
+                MessageBox.Show("已取消。");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+            Run.Content = "运行";
+            RunProgress.Visibility = Visibility.Hidden;
+            Login.IsEnabled = true;
+            _cts = null;
+        }
+
+        private DateTime GetExpirationDate()
+        {
+            var dateText = ExpirationDate.Text;
+            DateTime date;
+            if (!DateTime.TryParse(dateText, out date))
+            {
+                date = ExpirationDate.SelectedDate ?? DateTime.Now.AddDays(-1);
+            }
+            return date;
+        }
+
+        private TaskQueueManager.RunningMode GetRunningMode()
+        {
+            return SignleMode.IsChecked ?? true ? TaskQueueManager.RunningMode.Single : TaskQueueManager.RunningMode.Cycle;
+        }
+
+        private string GetEntryPointUrl()
+        {//TODO:告知用户循环模式下不能指定开始页码
+            var mode = GetRunningMode();
+            if (mode != TaskQueueManager.RunningMode.Single)
+                return "index.php?action=forum&fid=25&vt=1&tp=100&pp=100&sc=1&vf=0&sm=0&iam=notop-nolight-noattach&css=default&page=1";
+            var startPageText = StartPageBox.Text;
+            int startPage;
+            if (!int.TryParse(startPageText, out startPage))
+                startPage = 1;
+            return "index.php?action=forum&fid=25&vt=1&tp=100&pp=100&sc=1&vf=0&sm=0&iam=notop-nolight-noattach&css=default&page=" + startPage;
+        }
+
+        private void SigninInput_OnKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                Signin_OnClick(this, new RoutedEventArgs());
+                e.Handled = true;
+            }
         }
     }
-    class AuthConfig : IAuthConfig
+
+    internal class AuthConfig : IAuthConfig
     {
         public string UserName { get; set; }
         public string AuthToken { get; set; }
