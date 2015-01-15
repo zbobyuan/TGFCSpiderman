@@ -16,4 +16,8 @@ namespace taiyuanhitech.TGFCSpiderman.CommonLib
         public int PositiveRate { get; set; }
         public int NegativeRate { get; set; }
     }
+    public class PostWithThreadTitle : Post
+    {
+        public string ThreadTitle { get; set; }
+    }
 }
