@@ -65,6 +65,7 @@
                     <TextBox Name="OutputBox" Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="3" Margin="30" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"></TextBox>
                 </Grid>
             </TabItem>
+            <TabItem Header="搜索" controls:ControlsHelper.HeaderFontSize="20"></TabItem>
         </TabControl>
     </DockPanel>
 </controls:MetroWindow>
