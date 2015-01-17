@@ -198,8 +198,6 @@ namespace taiyuanhitech.TGFCSpidermanX
 
         private DateTime GetExpirationDate()
         {
-            return DateTime.Now.AddMinutes(-10);
-            /*
             var dateText = ExpirationDate.Text;
             DateTime date;
             if (!DateTime.TryParse(dateText, out date))
@@ -207,7 +205,6 @@ namespace taiyuanhitech.TGFCSpidermanX
                 date = ExpirationDate.SelectedDate ?? DateTime.Now.AddDays(-1);
             }
             return date;
-             //* */
         }
 
         private RunningInfo.RunningMode GetRunningMode()
