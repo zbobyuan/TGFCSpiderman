@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using taiyuanhitech.TGFCSpiderman.CommonLib;
 using taiyuanhitech.TGFCSpiderman.Configuration;
 using taiyuanhitech.TGFCSpiderman.Persistence;
 
@@ -68,8 +69,17 @@ namespace taiyuanhitech.TGFCSpiderman
             Console.WriteLine("开始执行...");
             var taskManager = new TaskQueueManager(ComponentFactory.GetPageFetcher(),
                 ComponentFactory.GetPageProcessor(), Console.WriteLine);
-            CancellationTokenSource cts = new CancellationTokenSource();
-            taskManager.Run("index.php?action=forum&fid=25&vt=1&tp=100&pp=100&sc=1&vf=0&sm=0&iam=notop-nolight-noattach&css=default&page=1", DateTime.Now.AddDays(-1),  cts.Token, TaskQueueManager.RunningMode.Cycle).Wait();
+            var cts = new CancellationTokenSource();
+            var date = DateTime.Now.AddDays(-1);
+            var runningInfo = new RunningInfo
+            {
+                InitialEntryPointUrl = "index.php?action=forum&fid=25&vt=1&tp=100&pp=100&sc=1&vf=0&sm=0&iam=notop-nolight-noattach&css=default&page=1",
+                InitialExpirationDate = date,
+                CurrentExpirationDate = date,
+                Mode = RunningInfo.RunningMode.Single,
+                StartTime = DateTime.Now
+            };
+            taskManager.Run(runningInfo, cts.Token).Wait(cts.Token);
 
             Console.WriteLine("跑完了.{0}按任意键退出。", Environment.NewLine);
             Console.ReadKey();

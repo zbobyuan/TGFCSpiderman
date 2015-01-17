@@ -97,6 +97,7 @@
     <Compile Include="CommonLib\Post.cs" />
     <Compile Include="CommonLib\ForumThread.cs" />
     <Compile Include="CommonLib\Revision.cs" />
+    <Compile Include="CommonLib\RunningInfo.cs" />
     <Compile Include="CommonLib\ThreadHeader.cs" />
     <Compile Include="ComponentFactory.cs" />
     <Compile Include="Configuration\AuthConfigElement.cs" />
@@ -113,7 +114,9 @@
     <Compile Include="MillPageHelper.cs" />
     <Compile Include="PageFetcher.cs" />
     <Compile Include="PageProcessor.cs" />
+    <Compile Include="Persistence\IRunningInfoRepository.cs" />
     <Compile Include="Persistence\PostRepository.cs" />
+    <Compile Include="Persistence\RunningInfoRepository.cs" />
     <Compile Include="Persistence\TgfcDbContext.cs" />
     <Compile Include="JobQueue\JobRunner.cs" />
     <Compile Include="Program.cs" />

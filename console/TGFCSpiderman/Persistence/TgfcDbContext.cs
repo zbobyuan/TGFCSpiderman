@@ -13,9 +13,11 @@ namespace taiyuanhitech.TGFCSpiderman.Persistence
 
         public DbSet<Post> Posts { get; set; }
         public DbSet<Revision> Revisions { get; set; }
+        public DbSet<RunningInfo> RunningInfoes { get; set; } 
 
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
+            modelBuilder.Ignore<PostWithThreadTitle>();
             modelBuilder.Entity<Post>().Property(p => p.Id).HasDatabaseGeneratedOption(DatabaseGeneratedOption.None);
         }
     }

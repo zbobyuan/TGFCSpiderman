@@ -38,7 +38,7 @@ namespace taiyuanhitech.TGFCSpiderman.Persistence
                                 var revision = new Revision
                                 {
                                     PostId = post.Id,
-                                    CreateDate = oldPost.ModifyDate.HasValue ? oldPost.ModifyDate.Value : oldPost.CreateDate,
+                                    CreateDate = oldPost.ModifyDate ?? oldPost.CreateDate,
                                     Title = oldPost.Title,
                                     HtmlContent = oldPost.HtmlContent
                                 };

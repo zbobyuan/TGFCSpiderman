@@ -1,10 +1,10 @@
 ﻿using System;
-using System.Globalization;
 using System.Threading;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
+using NLog;
 using taiyuanhitech.TGFCSpiderman;
+using taiyuanhitech.TGFCSpiderman.CommonLib;
 using taiyuanhitech.TGFCSpiderman.Configuration;
 using taiyuanhitech.TGFCSpidermanX.ViewModel;
 
@@ -12,12 +12,15 @@ namespace taiyuanhitech.TGFCSpidermanX
 {
     public partial class MainWindow
     {
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+        private readonly App _app;
         private readonly ConfigurationManager _configurationManager = new ConfigurationManager();
         private readonly Dashboard _dashboardViewModel;
         private CancellationTokenSource _cts;
 
         public MainWindow()
         {
+            _app = (App)Application.Current;
             InitializeComponent();
             _dashboardViewModel = (Dashboard)FindResource("DashboardViewModel");
             var authConfig = _configurationManager.GetAuthConfig();
@@ -143,11 +146,37 @@ namespace taiyuanhitech.TGFCSpidermanX
                         OutputBox.Dispatcher.InvokeAsync(output);
                     }
                 });
-            var entryPointUrl = GetEntryPointUrl();
+
             _cts = new CancellationTokenSource();
+            _app.RunningInfo = await ComponentFactory.GetRunningInfoRepository().GetLastUncompletedAsync();
+            if (_app.RunningInfo != null)
+            {
+                var runLastUncompletedTask = MessageBox.Show(string.Format("上次开始于{0}的任务没运行完成，要继续吗？\r\n选择\"是\"继续运行，选择\"否\"开始运行新任务。", _app.RunningInfo.StartTime),
+                    "", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes;
+                if (!runLastUncompletedTask)
+                {
+                    _app.RunningInfo.IsCompleted = true;
+                    _app.RunningInfo.LastSavedTime = DateTime.Now;
+                    await ComponentFactory.GetRunningInfoRepository().SaveAsync(_app.RunningInfo);
+                    _app.RunningInfo = null;
+                }
+            }
+            if (_app.RunningInfo == null)
+            {
+                var date = GetExpirationDate();
+                _app.RunningInfo = new RunningInfo
+                {
+                    InitialEntryPointUrl = GetEntryPointUrl(),
+                    InitialExpirationDate = date,
+                    CurrentExpirationDate = date,
+                    Mode = GetRunningMode(),
+                    StartTime = DateTime.Now,
+                };
+            }
+
             try
             {
-                await taskManager.Run(entryPointUrl, GetExpirationDate(), _cts.Token, GetRunningMode());
+                await taskManager.Run(_app.RunningInfo, _cts.Token);
             }
             catch (OperationCanceledException)
             {
@@ -157,6 +186,10 @@ namespace taiyuanhitech.TGFCSpidermanX
             {
                 MessageBox.Show(ex.Message);
             }
+            finally
+            {
+                _app.RunningInfo = null;
+            }
             Run.Content = "运行";
             RunProgress.Visibility = Visibility.Hidden;
             Login.IsEnabled = true;
@@ -165,6 +198,8 @@ namespace taiyuanhitech.TGFCSpidermanX
 
         private DateTime GetExpirationDate()
         {
+            return DateTime.Now.AddMinutes(-10);
+            /*
             var dateText = ExpirationDate.Text;
             DateTime date;
             if (!DateTime.TryParse(dateText, out date))
@@ -172,17 +207,18 @@ namespace taiyuanhitech.TGFCSpidermanX
                 date = ExpirationDate.SelectedDate ?? DateTime.Now.AddDays(-1);
             }
             return date;
+             //* */
         }
 
-        private TaskQueueManager.RunningMode GetRunningMode()
+        private RunningInfo.RunningMode GetRunningMode()
         {
-            return SignleMode.IsChecked ?? true ? TaskQueueManager.RunningMode.Single : TaskQueueManager.RunningMode.Cycle;
+            return SignleMode.IsChecked ?? true ? RunningInfo.RunningMode.Single : RunningInfo.RunningMode.Cycle;
         }
 
         private string GetEntryPointUrl()
         {//TODO:告知用户循环模式下不能指定开始页码
             var mode = GetRunningMode();
-            if (mode != TaskQueueManager.RunningMode.Single)
+            if (mode != RunningInfo.RunningMode.Single)
                 return "index.php?action=forum&fid=25&vt=1&tp=100&pp=100&sc=1&vf=0&sm=0&iam=notop-nolight-noattach&css=default&page=1";
             var startPageText = StartPageBox.Text;
             int startPage;

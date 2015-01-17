@@ -3,12 +3,14 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
+using NLog;
 
 namespace taiyuanhitech.TGFCSpiderman.JobQueue
 {
     public abstract class JobRunner<TRequest>
         where TRequest : class
     {
+        private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         private BlockingCollection<TRequest> _jobQueue;
         private Thread _worker;
 
@@ -81,7 +83,7 @@ namespace taiyuanhitech.TGFCSpiderman.JobQueue
             }
             catch (Exception e)
             {
-                Debug.WriteLine("JobRunner未知错误:{0}", e);
+                Logger.Error(e);
             }
         }
     }

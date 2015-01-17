@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using taiyuanhitech.TGFCSpiderman.CommonLib;
@@ -51,12 +52,12 @@ namespace taiyuanhitech.TGFCSpiderman
             _httpClient.Dispose();
         }
 
-        public Task<PageFetchResult> Fetch(PageFetchRequest request)
+        public Task<PageFetchResult> Fetch(PageFetchRequest request, CancellationToken ct)
         {
-            return Fetch(request, 0);
+            return Fetch(request, 0, ct);
         }
 
-        public async Task<PageFetchResult> Fetch(PageFetchRequest request, int delay)
+        public async Task<PageFetchResult> Fetch(PageFetchRequest request, int delay, CancellationToken ct)
         {
             var result = new PageFetchResult(request);
             HttpResponseMessage responseMessage = null;
@@ -64,9 +65,16 @@ namespace taiyuanhitech.TGFCSpiderman
             {
                 if (delay > 0)
                 {
-                    await Task.Delay(delay);
+                    try
+                    {
+                        await Task.Delay(delay, ct);
+                    }
+                    catch (TaskCanceledException)//CancellationTokenSource is canceled.
+                    {
+                        ct.ThrowIfCancellationRequested();
+                    }
                 }
-                responseMessage = await _httpClient.GetAsync(request.Url);
+                responseMessage = await _httpClient.GetAsync(request.Url, ct);
                 responseMessage.EnsureSuccessStatusCode();
                 using (var content = responseMessage.Content)
                 {
@@ -75,7 +83,9 @@ namespace taiyuanhitech.TGFCSpiderman
                 return result;
             }
             catch (TaskCanceledException)
-            {
+            {//http timeout or user canceled.
+                //if (ct.IsCancellationRequested)
+                ct.ThrowIfCancellationRequested();
                 result.Error = new PageFetchResult.ErrorInfo
                 {
                     IsTimeout = true

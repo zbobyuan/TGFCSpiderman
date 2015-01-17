@@ -9,17 +9,12 @@ using NLog;
 using taiyuanhitech.TGFCSpiderman.CommonLib;
 using taiyuanhitech.TGFCSpiderman.JobQueue;
 using System.Threading.Tasks;
+using taiyuanhitech.TGFCSpiderman.Persistence;
 
 namespace taiyuanhitech.TGFCSpiderman
 {
     public class TaskQueueManager
     {
-        public enum RunningMode
-        {
-            Single,
-            Cycle,
-        }
-
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
         private const int InitialRetryInterval = 100;//TODO:configurable
         private const int ForumPageMaxRetryTimes = 15;
@@ -30,6 +25,7 @@ namespace taiyuanhitech.TGFCSpiderman
         private readonly IPageFetcher _pageFetcher;
         private readonly IPageProcessor _pageProcessor;
         private readonly PostSaveJobRunner _pageSaveJobRunner;
+        private readonly IRunningInfoRepository _runningInfoRepository;
         private Dictionary<string, int> _retryCounter;
         private readonly HashSet<int> _excludedThreadIds = new HashSet<int> { 7041501, 7018450, 6685754 };
         private readonly Action<string> _outputAction;
@@ -40,46 +36,60 @@ namespace taiyuanhitech.TGFCSpiderman
             _pageProcessor = pageProcessor;
             _outputAction = outputAction;
             _pageSaveJobRunner = new PostSaveJobRunner(ComponentFactory.GetPostRepository());
+            _runningInfoRepository = ComponentFactory.GetRunningInfoRepository();
         }
 
-        public async Task Run(string entryPointUrl, DateTime expirationDate, CancellationToken ct, RunningMode mode = RunningMode.Single)
+        public async Task Run(RunningInfo runningInfo, CancellationToken ct)
         {
-            if (string.IsNullOrEmpty(entryPointUrl))
-                throw new ArgumentNullException("entryPointUrl");
+            if (runningInfo == null)
+                throw new ArgumentNullException("runningInfo");
 
-            var rawEntryPointUrl = entryPointUrl;
+            var rawEntryPointUrl = runningInfo.InitialEntryPointUrl;
+            var entryPointUrl = runningInfo.CurrentEntryPointUrl ?? rawEntryPointUrl;
+            var mode = runningInfo.Mode;
+            var expirationDate = runningInfo.CurrentExpirationDate;
             var lastCycleStartTime = DateTime.Now;
             var fetchQueue = new Queue<PageFetchRequest>();
             _retryCounter = new Dictionary<string, int>();
             _pageSaveJobRunner.Run();
             var watch = Stopwatch.StartNew();
+
             try
             {
                 for (; ; )
                 {
+                    ct.ThrowIfCancellationRequested();
                     if (string.IsNullOrEmpty(entryPointUrl))
                     {
-                        if (mode == RunningMode.Single) return;
+                        if (mode == RunningInfo.RunningMode.Single)
+                        {
+                            runningInfo.IsCompleted = true;
+                            return;
+                        }
                         else
                         {
                             entryPointUrl = rawEntryPointUrl;
                             expirationDate = lastCycleStartTime;
                             _outputAction(string.Format("运行完成，等待{0}分钟后重新开始。", CycleInterval));
-                            try
-                            {
-                                await Task.Delay(CycleInterval*60*1000, ct);
-                            }
-                            catch (TaskCanceledException)//CancellationTokenSource is canceled.
-                            {
-                                ct.ThrowIfCancellationRequested();
-                            }
-                            
+                            await Task.Delay(CycleInterval * 60 * 1000, ct);
+
                             lastCycleStartTime = DateTime.Now;
                         }
                     }
+
+                    runningInfo.CurrentEntryPointUrl = entryPointUrl;
+                    runningInfo.CurrentExpirationDate = expirationDate;
+                    try
+                    {
+                        await _runningInfoRepository.SaveAsync(runningInfo);
+                    }
+                    catch (Exception e)
+                    {
+                        Logger.Error(e);
+                    }//即使保存失败也没关系
                     _outputAction(string.Format("正在获取论坛第 {0} 页，截止时间:{1}。", entryPointUrl.GetPageIndex(), expirationDate));
 
-                    var entryPointHtmlContent = await FetchPageContent(entryPointUrl, ForumPageMaxRetryTimes);
+                    var entryPointHtmlContent = await FetchPageContent(entryPointUrl, ForumPageMaxRetryTimes, ct);
                     if (entryPointHtmlContent == null)
                     {
                         var error = string.Format("无法获取论坛第 {0} 页，URL:{1}\r\n退出运行。", entryPointUrl.GetPageIndex(), entryPointUrl);
@@ -89,7 +99,7 @@ namespace taiyuanhitech.TGFCSpiderman
                     }
 
                     MillResult<List<ThreadHeader>> forumPageMillResult;
-                    var processStatus = _pageProcessor.TryProcessPage( new MillRequest { Url = entryPointUrl, HtmlContent = entryPointHtmlContent },
+                    var processStatus = _pageProcessor.TryProcessPage(new MillRequest { Url = entryPointUrl, HtmlContent = entryPointHtmlContent },
                             out forumPageMillResult);
 
                     if (processStatus != MillStatus.Success)
@@ -97,11 +107,12 @@ namespace taiyuanhitech.TGFCSpiderman
                         HandleForumPageMillError(entryPointUrl, processStatus);
                         return;
                     }
-
+                    ct.ThrowIfCancellationRequested();
                     var threadHeaders = forumPageMillResult.Result.Where(t => !_excludedThreadIds.Contains(t.Id)).ToList();
                     var currentIndex = 0;
                     while (currentIndex < threadHeaders.Count)
                     {
+                        ct.ThrowIfCancellationRequested();
                         var requests = new List<PageFetchRequest>(PageFetchBatchSize);
                         for (var i = 0; i < PageFetchBatchSize && currentIndex < threadHeaders.Count; i++, currentIndex++)
                         {
@@ -109,7 +120,7 @@ namespace taiyuanhitech.TGFCSpiderman
                             requests.Add(new PageFetchRequest(header.Url.ChangePageIndex(header.GetLastPageIndex()),
                                 header.ToDescription().ChangePageIndexInDescription(header.GetLastPageIndex())));
                         }
-                        var oldestReplyDate = await ProcessThreadPageRequests(requests, expirationDate, fetchQueue);
+                        var oldestReplyDate = await ProcessThreadPageRequests(requests, expirationDate, fetchQueue, ct);
                         if (oldestReplyDate < expirationDate)
                         {
                             //以下的肯定是更旧的贴，无需再看了，跳出while循环，处理fetchQueue。
@@ -131,15 +142,21 @@ namespace taiyuanhitech.TGFCSpiderman
                         {
                             requests.Add(fetchQueue.Dequeue());
                         }
-                        await ProcessThreadPageRequests(requests, expirationDate, fetchQueue);
+                        await ProcessThreadPageRequests(requests, expirationDate, fetchQueue, ct);
                         //TODO:Delay 
                     }
                 }
+            }
+            catch (TaskCanceledException)//CancellationTokenSource is canceled.
+            {
+                ct.ThrowIfCancellationRequested();
             }
             finally
             {
                 _pageSaveJobRunner.Stop();
                 watch.Stop();
+                runningInfo.IsCompleted = true;
+                SaveRunningInfo(runningInfo);
                 _outputAction(string.Format("运行完成，耗时 {0} 秒，约{1:0.0}分钟", watch.Elapsed.TotalSeconds, watch.Elapsed.TotalSeconds / 60.0));
             }
         }
@@ -163,12 +180,13 @@ namespace taiyuanhitech.TGFCSpiderman
             }
         }
 
-        private async Task<DateTime> ProcessThreadPageRequests(IEnumerable<PageFetchRequest> requests, DateTime expirationDate, Queue<PageFetchRequest> fetchQueue)
+        private async Task<DateTime> ProcessThreadPageRequests(IEnumerable<PageFetchRequest> requests, DateTime expirationDate, Queue<PageFetchRequest> fetchQueue, CancellationToken ct)
         {
             var rt = DateTime.MaxValue;
-            var tasks = requests.Select((r, i) => _pageFetcher.Fetch(r, i * InitialRetryInterval)).ToList();
+            var tasks = requests.Select((r, i) => _pageFetcher.Fetch(r, i * InitialRetryInterval, ct)).ToList();
             while (tasks.Count > 0)
             {
+                ct.ThrowIfCancellationRequested();
                 var completedTask = await Task.WhenAny(tasks);
                 if (completedTask.Status == TaskStatus.RanToCompletion)
                 {
@@ -252,17 +270,28 @@ namespace taiyuanhitech.TGFCSpiderman
                             _retryCounter.Remove(completedTask.Result.Url);
                         }
                     }
-                }//else,不知道该怎么办，忽略吧。
+                }
+                else if (completedTask.Status == TaskStatus.Canceled)
+                {
+                    ct.ThrowIfCancellationRequested();
+                }
+                else
+                {
+                    if (completedTask.Exception != null)
+                    {
+                        Logger.Error(completedTask.Exception);
+                    }
+                }
                 tasks.Remove(completedTask);
             }
             return rt;
         }
 
-        private async Task<string> FetchPageContent(string url, int maxRetryTimes)
+        private async Task<string> FetchPageContent(string url, int maxRetryTimes, CancellationToken ct)
         {
             var retryInterval = InitialRetryInterval;
             PageFetchResult result;
-            while ((result = await _pageFetcher.Fetch(new PageFetchRequest(url))).Content == null)
+            while ((result = await _pageFetcher.Fetch(new PageFetchRequest(url),ct)).Content == null)
             {
                 var retryCount = GetRetryCount(url);
                 if (retryCount + 1 >= maxRetryTimes)
@@ -272,7 +301,7 @@ namespace taiyuanhitech.TGFCSpiderman
                 }
                 _retryCounter[url] = retryInterval + 1;
 
-                await Task.Delay(TimeSpan.FromMilliseconds(retryInterval));
+                await Task.Delay(TimeSpan.FromMilliseconds(retryInterval), ct);
                 retryInterval *= 2;
                 if (retryInterval > MaxRetryInterval)
                     retryInterval = InitialRetryInterval;
@@ -284,6 +313,16 @@ namespace taiyuanhitech.TGFCSpiderman
         private int GetRetryCount(string url)
         {
             return _retryCounter.ContainsKey(url) ? _retryCounter[url] : 0;
+        }
+
+        private void SaveRunningInfo(RunningInfo running)
+        {
+            running.LastSavedTime = DateTime.Now;
+            try
+            {
+                _runningInfoRepository.SaveAsync(running).Wait();
+            }
+            catch { }
         }
     }
 
