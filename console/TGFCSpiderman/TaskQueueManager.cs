@@ -182,7 +182,7 @@ namespace taiyuanhitech.TGFCSpiderman
 
         private async Task<DateTime> ProcessThreadPageRequests(IEnumerable<PageFetchRequest> requests, DateTime expirationDate, Queue<PageFetchRequest> fetchQueue, CancellationToken ct)
         {
-            var rt = DateTime.MaxValue;
+            var oldestReplyDate = DateTime.MaxValue;
             var tasks = requests.Select((r, i) => _pageFetcher.Fetch(r, i * InitialRetryInterval, ct)).ToList();
             while (tasks.Count > 0)
             {
@@ -204,16 +204,19 @@ namespace taiyuanhitech.TGFCSpiderman
                             case MillStatus.Success:
                                 _outputAction(threadLastPageProcessResult.HumanReadableDescription.ChangeStatusInDescription("处理完成"));
                                 var thread = threadLastPageProcessResult.Result;
-                                _pageSaveJobRunner.EnqueueRange(thread.Posts);
-                                var lastPost = thread.Posts.Last();
-                                var lastReplyDate = lastPost.ModifyDate ?? lastPost.CreateDate;
-                                if (lastReplyDate < rt)
+                                if (thread.Posts != null && thread.Posts.Count > 0)
                                 {
-                                    rt = lastReplyDate;
+                                    _pageSaveJobRunner.EnqueueRange(thread.Posts);
+                                    var lastPost = thread.Posts.Last();
+                                    var lastReplyDate = lastPost.ModifyDate ?? lastPost.CreateDate;
+                                    if (lastReplyDate < oldestReplyDate)
+                                    {
+                                        oldestReplyDate = lastReplyDate;
+                                    }
                                 }
                                 if (threadLastPageProcessResult.NextPageUrl != null)
                                 {
-                                    if (threadLastPageProcessResult.NextPageUrl.GetPageIndex() != "1")
+                                    if (threadLastPageProcessResult.NextPageUrl.GetPageIndex() != "1" && thread.Posts != null && thread.Posts.Count > 0)
                                     {
                                         var oldestPost = thread.Posts.First();
                                         if (oldestPost.CreateDate < expirationDate)
@@ -284,7 +287,7 @@ namespace taiyuanhitech.TGFCSpiderman
                 }
                 tasks.Remove(completedTask);
             }
-            return rt;
+            return oldestReplyDate;
         }
 
         private async Task<string> FetchPageContent(string url, int maxRetryTimes, CancellationToken ct)
