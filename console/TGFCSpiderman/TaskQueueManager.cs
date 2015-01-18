@@ -56,6 +56,7 @@ namespace taiyuanhitech.TGFCSpiderman
 
             try
             {
+                var oldestReplyDateTillNow = DateTime.MaxValue;
                 for (; ; )
                 {
                     ct.ThrowIfCancellationRequested();
@@ -121,11 +122,17 @@ namespace taiyuanhitech.TGFCSpiderman
                                 header.ToDescription().ChangePageIndexInDescription(header.GetLastPageIndex())));
                         }
                         var oldestReplyDate = await ProcessThreadPageRequests(requests, expirationDate, fetchQueue, ct);
-                        if (oldestReplyDate < expirationDate)
+
+                        if ((oldestReplyDate != DateTime.MaxValue) && oldestReplyDateTillNow == DateTime.MaxValue || (oldestReplyDateTillNow - oldestReplyDate).TotalHours < 24)//如果最新发现的回复比上一次发现的回复晚一天之内是正常的，否则说明有删帖，忽视该异常回复即可
                         {
-                            //以下的肯定是更旧的贴，无需再看了，跳出while循环，处理fetchQueue。
-                            entryPointUrl = null;
-                            break;
+                            oldestReplyDateTillNow = oldestReplyDate;
+                            if (oldestReplyDate < expirationDate)
+                            {
+                                //以下的肯定是更旧的贴，无需再看了，跳出while循环，处理fetchQueue。
+                                //但有时因为删帖的原因，一个最后回复非常早的贴会出现在正常列表中，导致提前终止运行。
+                                entryPointUrl = null;
+                                break;
+                            }
                         }
                         //TODO:Delay 
                     } //while
@@ -325,7 +332,10 @@ namespace taiyuanhitech.TGFCSpiderman
             {
                 _runningInfoRepository.SaveAsync(running).Wait();
             }
-            catch { }
+            catch(Exception e)
+            {
+                Logger.Error(e);
+            }
         }
     }
 
