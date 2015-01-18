@@ -8,15 +8,24 @@ namespace taiyuanhitech.TGFCSpidermanX
 {
     public partial class App
     {
-        static readonly Mutex AppMutex = new Mutex(true, "{991D79D4-6DC1-4FD4-A5C5-C3DB3B17F237}");
+        static readonly Mutex AppMutex = new Mutex(true, "[E0F06A0A-1399-4E86-ACC6-C48973F2B854}");
         public RunningInfo RunningInfo { get; set; }
+
+        public bool IsSignedin
+        {
+            get
+            {
+                return ComponentFactory.GetPageFetcher().HasAuthToken;
+            }
+        }
+
         protected override void OnStartup(StartupEventArgs e)
         {
-            if (!AppMutex.WaitOne(TimeSpan.Zero, true)) 
-            {
-                MessageBox.Show("已经有一个在运行了，不能多开。");
-                Current.Shutdown();
-            }
+            //if (!AppMutex.WaitOne(TimeSpan.Zero, true))
+            //{
+            //    MessageBox.Show("已经有一个在运行了，不能多开。");
+            //    Current.Shutdown();
+            //}
             base.OnStartup(e);
             ComponentFactory.Startup();
         }

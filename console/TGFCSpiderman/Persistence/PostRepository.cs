@@ -58,50 +58,47 @@ namespace taiyuanhitech.TGFCSpiderman.Persistence
             }
         }
 
-        public async Task<List<PostWithThreadTitle>> SearchAsync(string userName, string title, string content, DateTime? beginTime, DateTime? endTime, bool topicOnly, int pageSize = 100, int pageNumber = 1)
+        public Task<List<PostWithThreadTitle>> SearchAsync(string userName, string title, string content, DateTime? beginTime, DateTime? endTime, bool topicOnly, int pageSize = 100, int pageNumber = 1)
         {
-            using (var db = new TgfcDbContext())
-            {
-                db.Database.Log = s => Debug.WriteLine(s);
-                /** 因为SQLite Entity Framework Provider 会将string.Contains(string)会映射成SQL中的CHARINDEX（）>=0，
-                  * 该方法无法正常运行，搜索出来的很多无关记录，所以只好手动实现like %%。
-                  */
-                var sql = topicOnly ?  "SELECT *, Title AS ThreadTitle FROM Posts AS post WHERE [Order] = 1 "
+            /** 因为SQLite Entity Framework Provider 会将string.Contains(string)会映射成SQL中的CHARINDEX（）>=0，
+              * 该方法无法正常运行，搜索出来的很多无关记录，所以只好手动实现like %%。
+            */
+            var sql = topicOnly ? "SELECT *, Title AS ThreadTitle FROM Posts AS post WHERE [Order] = 1 "
                     : "SELECT post.*, thread.Title AS ThreadTitle FROM " +
                           "Posts AS post LEFT OUTER JOIN Posts AS thread " +
                           "ON post.ThreadId = thread.ThreadId AND thread.[Order] = 1 " +
                           "WHERE 1 = 1 ";
-                var ps = new List<SQLiteParameter>();
+            var ps = new List<SQLiteParameter>();
 
-                if (!string.IsNullOrEmpty(userName))
-                {
-                    sql += "AND post.UserName = @un ";
-                    ps.Add(new SQLiteParameter("un", userName));
-                }
-                if (beginTime != null)
-                {
-                    sql += "AND post.CreateDate >= @bt ";
-                    ps.Add(new SQLiteParameter("bt", beginTime));
-                }
-                if (endTime != null)
-                {
-                    sql += "AND post.CreateDate <= @et ";
-                    ps.Add(new SQLiteParameter("et", beginTime));
-                }
-                if (!string.IsNullOrEmpty(title))
-                {
-                    sql += "AND post.Title LIKE @t ";
-                    ps.Add(new SQLiteParameter("t", string.Format("%{0}%", title)));
-                }
-                if (!string.IsNullOrEmpty(content))
-                {
-                    sql += "AND post.HtmlContent LIKE @c ";
-                    ps.Add(new SQLiteParameter("c", string.Format("%{0}%", content)));
-                }
-                sql += string.Format("ORDER BY post.CreateDate DESC LIMIT {0} OFFSET {1}", pageSize, (pageNumber - 1) * pageSize);
-
-                var result = await db.Database.SqlQuery<PostWithThreadTitle>(sql, ps.ToArray()).ToListAsync();
-                return result;
+            if (!string.IsNullOrEmpty(userName))
+            {
+                sql += "AND post.UserName = @un ";
+                ps.Add(new SQLiteParameter("un", userName));
+            }
+            if (beginTime != null)
+            {
+                sql += "AND post.CreateDate >= @bt ";
+                ps.Add(new SQLiteParameter("bt", beginTime));
+            }
+            if (endTime != null)
+            {
+                sql += "AND post.CreateDate <= @et ";
+                ps.Add(new SQLiteParameter("et", beginTime));
+            }
+            if (!string.IsNullOrEmpty(title))
+            {
+                sql += "AND post.Title LIKE @t ";
+                ps.Add(new SQLiteParameter("t", string.Format("%{0}%", title)));
+            }
+            if (!string.IsNullOrEmpty(content))
+            {
+                sql += "AND post.HtmlContent LIKE @c ";
+                ps.Add(new SQLiteParameter("c", string.Format("%{0}%", content)));
+            }
+            sql += string.Format("ORDER BY post.CreateDate DESC LIMIT {0} OFFSET {1}", pageSize, (pageNumber - 1) * pageSize);
+            using (var db = new TgfcDbContext())
+            {
+                return db.Database.SqlQuery<PostWithThreadTitle>(sql, ps.ToArray()).ToListAsync();
             }
         }
 

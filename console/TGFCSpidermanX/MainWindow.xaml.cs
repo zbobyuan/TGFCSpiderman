@@ -7,6 +7,7 @@ using taiyuanhitech.TGFCSpiderman;
 using taiyuanhitech.TGFCSpiderman.CommonLib;
 using taiyuanhitech.TGFCSpiderman.Configuration;
 using taiyuanhitech.TGFCSpidermanX.ViewModel;
+using System.Threading.Tasks;
 
 namespace taiyuanhitech.TGFCSpidermanX
 {
@@ -16,6 +17,7 @@ namespace taiyuanhitech.TGFCSpidermanX
         private readonly App _app;
         private readonly ConfigurationManager _configurationManager = new ConfigurationManager();
         private readonly Dashboard _dashboardViewModel;
+        private readonly SearchViewModel _searchViewModel;
         private CancellationTokenSource _cts;
 
         public MainWindow()
@@ -23,6 +25,7 @@ namespace taiyuanhitech.TGFCSpidermanX
             _app = (App)Application.Current;
             InitializeComponent();
             _dashboardViewModel = (Dashboard)FindResource("DashboardViewModel");
+            _searchViewModel = (SearchViewModel)FindResource("SearchViewModel");
             var authConfig = _configurationManager.GetAuthConfig();
             _dashboardViewModel.UserName = authConfig.UserName;
             ExpirationDate.SelectedDate = DateTime.Now.AddDays(-1);
@@ -184,6 +187,7 @@ namespace taiyuanhitech.TGFCSpidermanX
             }
             catch (Exception ex)
             {
+                Logger.Error(ex);
                 MessageBox.Show(ex.Message);
             }
             finally
@@ -231,6 +235,22 @@ namespace taiyuanhitech.TGFCSpidermanX
                 Signin_OnClick(this, new RoutedEventArgs());
                 e.Handled = true;
             }
+        }
+
+        private async void Search_OnClick(object sender, RoutedEventArgs e)
+        {
+            SearchProgress.Visibility = Visibility.Visible;
+            var repos = ComponentFactory.GetPostRepository();
+            var endDate = _searchViewModel.EndDate;
+            if (endDate != null)
+            {
+                endDate = endDate.Value.AddSeconds(24 * 60 * 60 - 1);
+            }
+            var result = await repos.SearchAsync(_searchViewModel.UserName, _searchViewModel.Title, _searchViewModel.Content, 
+                _searchViewModel.StartDate, endDate, _searchViewModel.TopicOnly, 10, 1);
+
+            SearchGrid.ItemsSource = result;
+            SearchProgress.Visibility = Visibility.Hidden;
         }
     }
 

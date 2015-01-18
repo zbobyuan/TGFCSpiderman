@@ -11,6 +11,7 @@
                       Icon="t.ico">
     <controls:MetroWindow.Resources>
         <localViewModel:Dashboard x:Key="DashboardViewModel"/>
+        <localViewModel:SearchViewModel x:Key="SearchViewModel" />
     </controls:MetroWindow.Resources>
     <DockPanel LastChildFill="True">
         <TextBlock DockPanel.Dock="Left"
@@ -65,7 +66,47 @@
                     <TextBox Name="OutputBox" Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="3" Margin="30" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"></TextBox>
                 </Grid>
             </TabItem>
-            <TabItem Header="搜索" controls:ControlsHelper.HeaderFontSize="20"></TabItem>
+            <TabItem Header="搜索" controls:ControlsHelper.HeaderFontSize="20" DataContext="{Binding Source={StaticResource SearchViewModel}}">
+                <Grid Margin="5 5 10 5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="2*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10">用户名</TextBlock>
+                    <ComboBox Grid.Row="0" Grid.Column="1" IsEditable="True" Margin="10" Text="{Binding UserName, Mode=OneWayToSource}"></ComboBox>
+                    <TextBlock Grid.Row="0" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10">标题</TextBlock>
+                    <TextBox Grid.Row="0" Grid.Column="3" Margin="10" Text="{Binding Title, Mode=OneWayToSource, UpdateSourceTrigger=PropertyChanged}"></TextBox>
+                    <TextBlock Grid.Row="0" Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10">内容</TextBlock>
+                    <TextBox Grid.Row="0" Grid.Column="5" Margin="10" Text="{Binding Content, Mode=OneWayToSource, UpdateSourceTrigger=PropertyChanged}"></TextBox>
+                    <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10">开始日期</TextBlock>
+                    <DatePicker Grid.Row="1" Grid.Column="1" VerticalAlignment="Center" Margin="10" SelectedDate="{Binding StartDate, Mode=OneWayToSource}"/>
+                    <TextBlock Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10">结束日期</TextBlock>
+                    <DatePicker Grid.Row="1" Grid.Column="3" VerticalAlignment="Center" Margin="10" SelectedDate="{Binding EndDate, Mode=OneWayToSource}"/>
+                    <TextBlock Grid.Row="1" Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10">只搜主帖</TextBlock>
+                    <CheckBox Grid.Column="5" HorizontalAlignment="Left" Margin="10" Grid.Row="1" VerticalAlignment="Center" IsChecked="{Binding TopicOnly, Mode=OneWayToSource}"/>
+                    <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="6" HorizontalAlignment="Center" Orientation="Horizontal">
+                        <Button Name="Search" Content="搜索" Margin="0,20,0,0"  VerticalAlignment="Center" FontSize="20" FontWeight="Bold" MinWidth="100" IsDefault="True" Click="Search_OnClick"/>
+                        <controls:ProgressRing Name="SearchProgress" Visibility="Hidden" IsActive="True" Width="35" Height="35" Margin="10,15,0,0"/>
+                    </StackPanel>
+                    <DataGrid Name="SearchGrid" EnableRowVirtualization="True" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="6" Margin="0 10 0 0" AutoGenerateColumns="False" GridLinesVisibility="Horizontal">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Binding="{Binding Path=ThreadTitle, Mode=OneWay}" Header="标题"/>
+                            <DataGridTextColumn Binding="{Binding Path=UserName, Mode=OneWay}" Header="作者"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
         </TabControl>
     </DockPanel>
 </controls:MetroWindow>
