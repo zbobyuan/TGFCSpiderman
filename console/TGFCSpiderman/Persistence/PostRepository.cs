@@ -5,6 +5,7 @@ using System.Data.SQLite;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using SQLite;
 using taiyuanhitech.TGFCSpiderman.CommonLib;
 
 namespace taiyuanhitech.TGFCSpiderman.Persistence
@@ -68,38 +69,36 @@ namespace taiyuanhitech.TGFCSpiderman.Persistence
                           "Posts AS post LEFT OUTER JOIN Posts AS thread " +
                           "ON post.ThreadId = thread.ThreadId AND thread.[Order] = 1 " +
                           "WHERE 1 = 1 ";
-            var ps = new List<SQLiteParameter>();
+            var ps = new List<object>();
 
             if (!string.IsNullOrEmpty(userName))
             {
-                sql += "AND post.UserName = @un ";
-                ps.Add(new SQLiteParameter("un", userName));
+                sql += "AND post.UserName = ? ";
+                ps.Add(userName);
             }
             if (beginTime != null)
             {
-                sql += "AND post.CreateDate >= @bt ";
-                ps.Add(new SQLiteParameter("bt", beginTime));
+                sql += "AND post.CreateDate >= ? ";
+                ps.Add(beginTime);
             }
             if (endTime != null)
             {
-                sql += "AND post.CreateDate <= @et ";
-                ps.Add(new SQLiteParameter("et", beginTime));
+                sql += "AND post.CreateDate <= ? ";
+                ps.Add(endTime);
             }
             if (!string.IsNullOrEmpty(title))
             {
-                sql += "AND post.Title LIKE @t ";
-                ps.Add(new SQLiteParameter("t", string.Format("%{0}%", title)));
+                sql += "AND post.Title LIKE ? ";
+                ps.Add(string.Format("%{0}%", title));
             }
             if (!string.IsNullOrEmpty(content))
             {
-                sql += "AND post.HtmlContent LIKE @c ";
-                ps.Add(new SQLiteParameter("c", string.Format("%{0}%", content)));
+                sql += "AND post.HtmlContent LIKE ? ";
+                ps.Add(string.Format("%{0}%", content));
             }
             sql += string.Format("ORDER BY post.CreateDate DESC LIMIT {0} OFFSET {1}", pageSize, (pageNumber - 1) * pageSize);
-            using (var db = new TgfcDbContext())
-            {
-                return db.Database.SqlQuery<PostWithThreadTitle>(sql, ps.ToArray()).ToListAsync();
-            }
+            var conn = new SQLiteAsyncConnection("tgfc.sqlite");
+            return conn.QueryAsync<PostWithThreadTitle>(sql, ps.ToArray());
         }
 
         #region search by LINQ
