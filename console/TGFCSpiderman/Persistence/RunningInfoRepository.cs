@@ -1,49 +1,25 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data.Entity;
-using System.Diagnostics;
-using System.Linq;
-using System.Net;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
+using SQLite;
 using taiyuanhitech.TGFCSpiderman.CommonLib;
 
 namespace taiyuanhitech.TGFCSpiderman.Persistence
 {
     class RunningInfoRepository : IRunningInfoRepository
     {
+        const string DbName = "tgfc.sqlite";
         public Task SaveAsync(RunningInfo running)
         {
-            using (var db = new TgfcDbContext())
-            {
-                if (running.Id == 0)
-                {
-                    db.RunningInfoes.Add(running);
-                }
-                else
-                {
-                    db.RunningInfoes.Attach(running);
-                    var entry = db.Entry(running);
-                    entry.State = EntityState.Modified;
-                    entry.Property(e => e.InitialEntryPointUrl).IsModified = false;
-                    entry.Property(e => e.InitialExpirationDate).IsModified = false;
-                    entry.Property(e => e.Mode).IsModified = false;
-                    entry.Property(e => e.StartTime).IsModified = false;
-                }
-                return db.SaveChangesAsync();
-            }
+            var conn = new SQLiteAsyncConnection(DbName);
+            return running.Id == 0 ? conn.InsertAsync(running) : conn.UpdateAsync(running);
         }
 
         public Task<RunningInfo> GetLastUncompletedAsync()
         {
-            using (var db = new TgfcDbContext())
-            {
-                db.Database.Log = s => Debug.WriteLine(s);
-                return (from running in db.RunningInfoes
-                             where running.IsCompleted == false
-                             orderby running.StartTime descending
-                             select running).FirstOrDefaultAsync();
-            }
+            var conn = new SQLiteAsyncConnection(DbName);
+            return (from running in conn.Table<RunningInfo>()
+                    where running.IsCompleted == false
+                    orderby running.StartTime descending
+                    select running).FirstOrDefaultAsync();
         }
     }
 }

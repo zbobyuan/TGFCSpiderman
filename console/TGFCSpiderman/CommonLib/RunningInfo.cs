@@ -1,4 +1,5 @@
 ﻿using System;
+using SQLite;
 
 namespace taiyuanhitech.TGFCSpiderman.CommonLib
 {
@@ -9,6 +10,7 @@ namespace taiyuanhitech.TGFCSpiderman.CommonLib
             Single,
             Cycle,
         }
+        [PrimaryKey, AutoIncrement]
         public long Id { get; set; }
         public string InitialEntryPointUrl { get; set; }
         public string CurrentEntryPointUrl { get; set; }

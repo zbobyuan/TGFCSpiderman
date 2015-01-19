@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.Entity;
-using System.Data.SQLite;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using SQLite;
@@ -12,50 +9,58 @@ namespace taiyuanhitech.TGFCSpiderman.Persistence
 {
     public class PostRepository : IPostRepository
     {
+        const string DbName = "tgfc.sqlite";
         public void SavePosts(IEnumerable<Post> posts)
         {
-            using (var db = new TgfcDbContext())
+            var currentDate = DateTime.Now;
+            var conn = new SQLiteConnection(DbName);
+            var inserts = new List<Post>();
+            var updates = new List<Post>();
+            var revisions = new List<Revision>();
+            foreach (var post in posts)
             {
-                db.Database.Log = s => Debug.WriteLine(s);
-                foreach (var post in posts)
+                var oldPost = conn.Table<Post>().FirstOrDefault(p => p.Id == post.Id);
+                if (oldPost == null)
                 {
-                    var oldPost = db.Posts.FirstOrDefault(p => p.Id == post.Id);
-                    if (oldPost == null)
+                    post.SaveDate = currentDate;
+                    inserts.Add(post);
+                }
+                else
+                {
+                    if (post.ModifyDate.HasValue && post.ModifyDate != oldPost.ModifyDate)//变了
                     {
-                        post.SaveDate = DateTime.Now;
-                        db.Posts.Add(post);
+                        var revision = new Revision
+                        {
+                            PostId = post.Id,
+                            CreateDate = oldPost.ModifyDate ?? oldPost.CreateDate,
+                            Title = oldPost.Title,
+                            HtmlContent = oldPost.HtmlContent
+                        };
+                        revisions.Add(revision);
+                        post.SaveDate = currentDate;
+                        updates.Add(post);
                     }
                     else
-                    {//Entity Framework tracks change automaticly
-                        oldPost.PositiveRate = post.PositiveRate;
-                        oldPost.NegativeRate = post.NegativeRate;
-                        oldPost.Order = post.Order;
-                        oldPost.UserName = post.UserName;//anonymous to real name
-
-                        if (post.ModifyDate.HasValue)
+                    {//可能发生变化的只有少数几个属性
+                        if (post.PositiveRate != oldPost.PositiveRate
+                            || post.NegativeRate != oldPost.NegativeRate
+                            || post.UserName != oldPost.UserName
+                            || post.Order != oldPost.Order)
                         {
-                            if (post.ModifyDate != oldPost.ModifyDate)
-                            {
-                                var revision = new Revision
-                                {
-                                    PostId = post.Id,
-                                    CreateDate = oldPost.ModifyDate ?? oldPost.CreateDate,
-                                    Title = oldPost.Title,
-                                    HtmlContent = oldPost.HtmlContent
-                                };
-                                db.Revisions.Add(revision);
-                                oldPost.ModifyDate = post.ModifyDate;
-                                oldPost.Title = post.Title;
-                                oldPost.HtmlContent = post.HtmlContent;
-                            }
-                        }
-                        if (db.Entry(oldPost).State == EntityState.Modified)
-                        {
-                            oldPost.SaveDate = DateTime.Now;
+                            post.SaveDate = currentDate;
+                            updates.Add(post);
                         }
                     }
                 }
-                db.SaveChanges();
+            }
+            if (inserts.Count > 0 || revisions.Count > 0 || updates.Count > 0)
+            {
+                conn.RunInTransaction(() =>
+                {
+                    inserts.ForEach(p => conn.Insert(p));
+                    updates.ForEach(p => conn.Update(p));
+                    revisions.ForEach(r => conn.Insert(r));
+                });
             }
         }
 
@@ -64,9 +69,9 @@ namespace taiyuanhitech.TGFCSpiderman.Persistence
             /** 因为SQLite Entity Framework Provider 会将string.Contains(string)会映射成SQL中的CHARINDEX（）>=0，
               * 该方法无法正常运行，搜索出来的很多无关记录，所以只好手动实现like %%。
             */
-            var sql = topicOnly ? "SELECT *, Title AS ThreadTitle FROM Posts AS post WHERE [Order] = 1 "
+            var sql = topicOnly ? "SELECT *, Title AS ThreadTitle FROM Post AS post WHERE [Order] = 1 "
                     : "SELECT post.*, thread.Title AS ThreadTitle FROM " +
-                          "Posts AS post LEFT OUTER JOIN Posts AS thread " +
+                          "Post AS post LEFT OUTER JOIN Post AS thread " +
                           "ON post.ThreadId = thread.ThreadId AND thread.[Order] = 1 " +
                           "WHERE 1 = 1 ";
             var ps = new List<object>();
@@ -97,7 +102,7 @@ namespace taiyuanhitech.TGFCSpiderman.Persistence
                 ps.Add(string.Format("%{0}%", content));
             }
             sql += string.Format("ORDER BY post.CreateDate DESC LIMIT {0} OFFSET {1}", pageSize, (pageNumber - 1) * pageSize);
-            var conn = new SQLiteAsyncConnection("tgfc.sqlite");
+            var conn = new SQLiteAsyncConnection(DbName);
             return conn.QueryAsync<PostWithThreadTitle>(sql, ps.ToArray());
         }
 

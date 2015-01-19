@@ -1,9 +1,11 @@
 ﻿using System;
+using SQLite;
 
 namespace taiyuanhitech.TGFCSpiderman.CommonLib
 {
     public class Post
     {
+        [PrimaryKey]
         public long Id { get; set; }
         public int ThreadId { get; set; }
         public int Order { get; set; }

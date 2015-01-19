@@ -15,6 +15,7 @@ namespace UnitTest
     [DeploymentItem("System.Data.SQLite.Linq.dll")]
     public class RepositoryTest
     {
+        /*
         [TestMethod]
         public void SaveAndFetchPostTest()
         {
@@ -102,5 +103,6 @@ namespace UnitTest
                 Assert.AreEqual(revision.CreateDate, postCreatedByBob.CreateDate);
             }
         }
+         * */
     }
 }
