@@ -3,13 +3,11 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Input;
 using NLog;
-using taiyuanhitech.TGFCSpiderman;
 using taiyuanhitech.TGFCSpiderman.CommonLib;
 using taiyuanhitech.TGFCSpiderman.Configuration;
-using taiyuanhitech.TGFCSpidermanX.ViewModel;
-using System.Threading.Tasks;
+using taiyuanhitech.TGFCSpiderman.ViewModel;
 
-namespace taiyuanhitech.TGFCSpidermanX
+namespace taiyuanhitech.TGFCSpiderman
 {
     public partial class MainWindow
     {

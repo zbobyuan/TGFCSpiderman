@@ -80,12 +80,6 @@
     <Compile Include="StringExtenssionsTest.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\TGFCSpiderman\TGFCSpiderman.csproj">
-      <Project>{771f9d89-ca1e-4c98-b9b4-414d5dfcd531}</Project>
-      <Name>TGFCSpiderman</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <None Include="app.config">
       <SubType>Designer</SubType>
     </None>
@@ -137,6 +131,12 @@
     <Content Include="HtmlContents\ThreadPageNoReply.htm">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TGFCSpiderman\TGFCSpiderman.csproj">
+      <Project>{0f56eda9-cf7f-4c49-a67b-3fcd434d4902}</Project>
+      <Name>TGFCSpiderman</Name>
+    </ProjectReference>
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">

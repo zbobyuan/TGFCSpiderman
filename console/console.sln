@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
 VisualStudioVersion = 12.0.31101.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TGFCSpiderman", "TGFCSpiderman\TGFCSpiderman.csproj", "{771F9D89-CA1E-4C98-B9B4-414D5DFCD531}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTest", "UnitTest\UnitTest.csproj", "{A0FD9782-826F-4862-93C5-237A45F85090}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{777CB7FE-F37D-415B-8DD9-04921322E2C9}"
@@ -14,7 +12,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{777CB7
 		.nuget\NuGet.targets = .nuget\NuGet.targets
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TGFCSpidermanX", "TGFCSpidermanX\TGFCSpidermanX.csproj", "{0F56EDA9-CF7F-4C49-A67B-3FCD434D4902}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TGFCSpiderman", "TGFCSpiderman\TGFCSpiderman.csproj", "{0F56EDA9-CF7F-4C49-A67B-3FCD434D4902}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -22,10 +20,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{771F9D89-CA1E-4C98-B9B4-414D5DFCD531}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{771F9D89-CA1E-4C98-B9B4-414D5DFCD531}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{771F9D89-CA1E-4C98-B9B4-414D5DFCD531}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{771F9D89-CA1E-4C98-B9B4-414D5DFCD531}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A0FD9782-826F-4862-93C5-237A45F85090}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A0FD9782-826F-4862-93C5-237A45F85090}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A0FD9782-826F-4862-93C5-237A45F85090}.Release|Any CPU.ActiveCfg = Release|Any CPU

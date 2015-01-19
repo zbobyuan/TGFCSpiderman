@@ -1,10 +1,8 @@
-﻿using System;
-using System.Threading;
+﻿using System.Threading;
 using System.Windows;
-using taiyuanhitech.TGFCSpiderman;
 using taiyuanhitech.TGFCSpiderman.CommonLib;
 
-namespace taiyuanhitech.TGFCSpidermanX
+namespace taiyuanhitech.TGFCSpiderman
 {
     public partial class App
     {

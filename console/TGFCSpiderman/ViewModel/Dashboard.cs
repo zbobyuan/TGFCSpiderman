@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.ComponentModel;
 
-namespace taiyuanhitech.TGFCSpidermanX.ViewModel
+namespace taiyuanhitech.TGFCSpiderman.ViewModel
 {
     public class Dashboard : INotifyPropertyChanged
     {
