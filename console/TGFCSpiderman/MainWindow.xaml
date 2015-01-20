@@ -3,6 +3,7 @@
                       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                       xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
                       xmlns:localViewModel="clr-namespace:taiyuanhitech.TGFCSpiderman.ViewModel"
+                      xmlns:localConverter="clr-namespace:taiyuanhitech.TGFCSpiderman.Converter"    
                       x:Class="taiyuanhitech.TGFCSpiderman.MainWindow"
                       Title="GFCSpidermanX"
                       Height="600"
@@ -12,6 +13,7 @@
     <controls:MetroWindow.Resources>
         <localViewModel:Dashboard x:Key="DashboardViewModel"/>
         <localViewModel:SearchViewModel x:Key="SearchViewModel" />
+        <localConverter:PostTitleConverter x:Key="PostTitleConverter" />
     </controls:MetroWindow.Resources>
     <DockPanel LastChildFill="True">
         <TextBlock DockPanel.Dock="Left"
@@ -100,8 +102,16 @@
                     </StackPanel>
                     <DataGrid Name="SearchGrid" EnableRowVirtualization="True" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="6" Margin="0 10 0 0" AutoGenerateColumns="False" GridLinesVisibility="Horizontal">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Binding="{Binding Path=ThreadTitle, Mode=OneWay}" Header="标题"/>
-                            <DataGridTextColumn Binding="{Binding Path=UserName, Mode=OneWay}" Header="作者"/>
+                            <DataGridTextColumn Header="标题" Width="*">
+                                <DataGridTextColumn.Binding>
+                                    <MultiBinding Converter="{StaticResource PostTitleConverter}">
+                                        <Binding Path="ThreadTitle"/>
+                                        <Binding Path="Order"/>
+                                    </MultiBinding>
+                                </DataGridTextColumn.Binding>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Binding="{Binding Path=UserName, Mode=OneWay}" Header="作者" MinWidth="100"/>
+                            <DataGridTextColumn Binding="{Binding Path=CreateDate, StringFormat={}{0:yy/MM/dd HH:mm}, Mode=OneWay}" Header="发表时间" Width="100"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </Grid>

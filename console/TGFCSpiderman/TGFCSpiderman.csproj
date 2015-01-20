@@ -91,6 +91,7 @@
     <Compile Include="Configuration\IConfiguration.cs" />
     <Compile Include="Configuration\PageFetcherConfigElement.cs" />
     <Compile Include="Configuration\TGFCSpidermanSection.cs" />
+    <Compile Include="Converter\PostTitleConverter.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="IoC\IoCContainer.cs" />
     <Compile Include="IPageFetcher.cs" />
@@ -159,9 +160,7 @@
   <ItemGroup>
     <Resource Include="t.ico" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Converter\" />
-  </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
     <None Include="sqlite3.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
