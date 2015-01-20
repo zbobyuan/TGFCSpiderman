@@ -15,6 +15,7 @@
         <localViewModel:SearchViewModel x:Key="SearchViewModel" />
         <localConverter:PostTitleConverter x:Key="PostTitleConverter" />
         <localConverter:PostUriConverter x:Key="PostUriConverter" />
+        <localConverter:ScrubHtmlConverter x:Key="ScrubHtmlConverter" />
     </controls:MetroWindow.Resources>
     <DockPanel LastChildFill="True">
         <TextBlock DockPanel.Dock="Left"
@@ -84,6 +85,7 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10">用户名</TextBlock>
                     <ComboBox Grid.Row="0" Grid.Column="1" IsEditable="True" Margin="10" Text="{Binding UserName, Mode=OneWayToSource}"></ComboBox>
@@ -101,7 +103,12 @@
                         <Button Name="Search" Content="搜索" Margin="0,20,0,0"  VerticalAlignment="Center" FontSize="20" FontWeight="Bold" MinWidth="100" IsDefault="True" Click="Search_OnClick"/>
                         <controls:ProgressRing Name="SearchProgress" Visibility="Hidden" IsActive="True" Width="35" Height="35" Margin="10,15,0,0"/>
                     </StackPanel>
-                    <DataGrid Name="SearchGrid" IsReadOnly="True" EnableRowVirtualization="True" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="6" Margin="0 10 0 0" AutoGenerateColumns="False" GridLinesVisibility="Horizontal">
+                    <DataGrid Name="SearchGrid" IsReadOnly="True" EnableRowVirtualization="True" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="6" Margin="0 10 0 0" AutoGenerateColumns="False" GridLinesVisibility="Horizontal" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <DataGrid.RowDetailsTemplate>
+                            <DataTemplate>
+                                <TextBlock TextWrapping="Wrap" Text="{Binding HtmlContent, Converter={StaticResource ScrubHtmlConverter}}" Margin="40,10,10,5"></TextBlock>
+                            </DataTemplate>
+                        </DataGrid.RowDetailsTemplate>
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="标题" Width="*">
                                 <DataGridTextColumn.Binding>
@@ -133,6 +140,10 @@
                             </DataGridTemplateColumn>
                         </DataGrid.Columns>
                     </DataGrid>
+                    <StackPanel Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="6" HorizontalAlignment="Center" Orientation="Horizontal">
+                        <Button Name="Prev" Content="上一页" Margin="0,5,5,0" Click="Prev_OnClick" IsEnabled="False"></Button>
+                        <Button Name="Next" Content="下一页" Margin="0,5,5,0" Click="Next_OnClick" IsEnabled="False"></Button>
+                    </StackPanel>
                 </Grid>
             </TabItem>
         </TabControl>

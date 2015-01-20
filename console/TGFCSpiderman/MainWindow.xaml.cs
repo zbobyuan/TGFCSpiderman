@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -14,10 +15,13 @@ namespace taiyuanhitech.TGFCSpiderman
     public partial class MainWindow
     {
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+        const int SearchPageSize = 10;
         private readonly App _app;
         private readonly ConfigurationManager _configurationManager = new ConfigurationManager();
         private readonly Dashboard _dashboardViewModel;
         private readonly SearchViewModel _searchViewModel;
+        private SearchViewModel _searchViewModelSnapshot;
+        private int _currentSearchPageIndex = 1;
         private CancellationTokenSource _cts;
 
         public MainWindow()
@@ -239,18 +243,26 @@ namespace taiyuanhitech.TGFCSpiderman
 
         private async void Search_OnClick(object sender, RoutedEventArgs e)
         {
+            _searchViewModelSnapshot = _searchViewModel.Clone();
+            await DoSearch(_currentSearchPageIndex = 1);
+        }
+
+        private async Task DoSearch(int pageIndex)
+        {
             SearchProgress.Visibility = Visibility.Visible;
             var repos = ComponentFactory.GetPostRepository();
-            var endDate = _searchViewModel.EndDate;
+            var endDate = _searchViewModelSnapshot.EndDate;
             if (endDate != null)
             {
-                endDate = endDate.Value.AddSeconds(24 * 60 * 60 - 1);
+                endDate = endDate.Value.AddSeconds(24*60*60 - 1);
             }
-            var result = await repos.SearchAsync(_searchViewModel.UserName, _searchViewModel.Title, _searchViewModel.Content, 
-                _searchViewModel.StartDate, endDate, _searchViewModel.TopicOnly, 10, 1);
+            var result = await repos.SearchAsync(_searchViewModelSnapshot.UserName, _searchViewModelSnapshot.Title, _searchViewModelSnapshot.Content,
+                _searchViewModelSnapshot.StartDate, endDate, _searchViewModelSnapshot.TopicOnly, SearchPageSize, pageIndex);
 
             SearchGrid.ItemsSource = result;
             SearchProgress.Visibility = Visibility.Hidden;
+            Prev.IsEnabled = _currentSearchPageIndex != 1;
+            Next.IsEnabled = result.Count >= SearchPageSize;
         }
 
         private void Hyperlink_OnClick(object sender, RoutedEventArgs e)
@@ -258,6 +270,16 @@ namespace taiyuanhitech.TGFCSpiderman
             var link = (Hyperlink)sender;
             Process.Start(link.NavigateUri.ToString());
             e.Handled = true;
+        }
+
+        private async void Next_OnClick(object sender, RoutedEventArgs e)
+        {
+            await DoSearch(++_currentSearchPageIndex);
+        }
+
+        private async void Prev_OnClick(object sender, RoutedEventArgs e)
+        {
+            await DoSearch(--_currentSearchPageIndex);
         }
     }
 
