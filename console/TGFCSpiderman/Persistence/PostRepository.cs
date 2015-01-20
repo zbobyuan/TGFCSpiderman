@@ -13,7 +13,7 @@ namespace taiyuanhitech.TGFCSpiderman.Persistence
         public void SavePosts(IEnumerable<Post> posts)
         {
             var currentDate = DateTime.Now;
-            var conn = new SQLiteConnection(DbName);
+            var conn = new SQLiteConnection(DbName, SQLiteOpenFlags.ReadWrite, true);
             var inserts = new List<Post>();
             var updates = new List<Post>();
             var revisions = new List<Revision>();
@@ -102,7 +102,7 @@ namespace taiyuanhitech.TGFCSpiderman.Persistence
                 ps.Add(string.Format("%{0}%", content));
             }
             sql += string.Format("ORDER BY post.CreateDate DESC LIMIT {0} OFFSET {1}", pageSize, (pageNumber - 1) * pageSize);
-            var conn = new SQLiteAsyncConnection(DbName);
+            var conn = new SQLiteAsyncConnection(DbName, SQLiteOpenFlags.ReadOnly, true);
             return conn.QueryAsync<PostWithThreadTitle>(sql, ps.ToArray());
         }
 
