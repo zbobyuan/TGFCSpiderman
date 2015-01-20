@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Windows;
+using System.Windows.Documents;
 using System.Windows.Input;
 using NLog;
 using taiyuanhitech.TGFCSpiderman.CommonLib;
@@ -249,6 +251,13 @@ namespace taiyuanhitech.TGFCSpiderman
 
             SearchGrid.ItemsSource = result;
             SearchProgress.Visibility = Visibility.Hidden;
+        }
+
+        private void Hyperlink_OnClick(object sender, RoutedEventArgs e)
+        {
+            var link = (Hyperlink)sender;
+            Process.Start(link.NavigateUri.ToString());
+            e.Handled = true;
         }
     }
 

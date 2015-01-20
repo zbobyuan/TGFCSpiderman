@@ -92,6 +92,7 @@
     <Compile Include="Configuration\PageFetcherConfigElement.cs" />
     <Compile Include="Configuration\TGFCSpidermanSection.cs" />
     <Compile Include="Converter\PostTitleConverter.cs" />
+    <Compile Include="Converter\PostUriConverter.cs" />
     <Compile Include="GlobalSuppressions.cs" />
     <Compile Include="IoC\IoCContainer.cs" />
     <Compile Include="IPageFetcher.cs" />
