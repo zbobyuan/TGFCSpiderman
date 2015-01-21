@@ -1,8 +1,8 @@
 ﻿using System;
 
-namespace taiyuanhitech.TGFCSpiderman.ViewModel
+namespace taiyuanhitech.TGFCSpiderman.CommonLib
 {
-    class SearchViewModel
+    class SearchDescriptor
     {
         public string UserName { get; set; }
         public string Title { get; set; }
@@ -12,9 +12,9 @@ namespace taiyuanhitech.TGFCSpiderman.ViewModel
         public bool TopicOnly { get; set; }
         public string SortOrder { get; set; }
         public DateTime? ReplyEndDate { get; set; }
-        public SearchViewModel Clone()
+        public SearchDescriptor Clone()
         {
-            return (SearchViewModel)MemberwiseClone();
+            return (SearchDescriptor)MemberwiseClone();
         }
     }
 }

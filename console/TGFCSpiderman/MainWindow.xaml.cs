@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -21,8 +20,8 @@ namespace taiyuanhitech.TGFCSpiderman
         private readonly App _app;
         private readonly ConfigurationManager _configurationManager = new ConfigurationManager();
         private readonly Dashboard _dashboardViewModel;
-        private readonly SearchViewModel _searchViewModel;
-        private SearchViewModel _searchViewModelSnapshot;
+        private readonly SearchDescriptor _searchViewModel;
+        private SearchDescriptor _searchViewModelSnapshot;
         private int _currentSearchPageIndex = 1;
         private CancellationTokenSource _cts;
 
@@ -31,7 +30,7 @@ namespace taiyuanhitech.TGFCSpiderman
             _app = (App)Application.Current;
             InitializeComponent();
             _dashboardViewModel = (Dashboard)FindResource("DashboardViewModel");
-            _searchViewModel = (SearchViewModel)FindResource("SearchViewModel");
+            _searchViewModel = (SearchDescriptor)FindResource("SearchViewModel");
             var authConfig = _configurationManager.GetAuthConfig();
             _dashboardViewModel.UserName = authConfig.UserName;
             ExpirationDate.SelectedDate = DateTime.Now.AddDays(-1);
