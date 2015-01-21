@@ -64,42 +64,42 @@ namespace taiyuanhitech.TGFCSpiderman.Persistence
             }
         }
 
-        public Task<List<PostWithThreadTitle>> SearchAsync(string userName, string title, string content, DateTime? beginTime, DateTime? endTime, bool topicOnly, string sortOrder, DateTime? replyEndDate, int pageSize = 100, int pageNumber = 1)
+        public Task<List<PostWithThreadTitle>> SearchAsync(SearchDescriptor descriptor, int pageSize = 100, int pageNumber = 1)
         {
             /** 因为SQLite Entity Framework Provider 会将string.Contains(string)会映射成SQL中的CHARINDEX（）>=0，
               * 该方法无法正常运行，搜索出来的很多无关记录，所以只好手动实现like %%。
             */
-            var sql = topicOnly ? "SELECT *, Title AS ThreadTitle FROM Post AS post WHERE [Order] = 1 "
+            var sql = descriptor.TopicOnly ? "SELECT *, Title AS ThreadTitle FROM Post AS post WHERE [Order] = 1 "
                     : "SELECT post.*, thread.Title AS ThreadTitle FROM " +
                           "Post AS post LEFT OUTER JOIN Post AS thread " +
                           "ON post.ThreadId = thread.ThreadId AND thread.[Order] = 1 " +
                           "WHERE 1 = 1 ";
             var ps = new List<object>();
 
-            if (!string.IsNullOrEmpty(userName))
+            if (!string.IsNullOrEmpty(descriptor.UserName))
             {
                 sql += "AND post.UserName = ? ";
-                ps.Add(userName);
+                ps.Add(descriptor.UserName);
             }
-            if (beginTime != null)
+            if (descriptor.StartDate != null)
             {
                 sql += "AND post.CreateDate >= ? ";
-                ps.Add(beginTime);
+                ps.Add(descriptor.StartDate);
             }
-            if (endTime != null)
+            if (descriptor.EndDate != null)
             {
                 sql += "AND post.CreateDate <= ? ";
-                ps.Add(endTime);
+                ps.Add(descriptor.EndDate);
             }
-            if (!string.IsNullOrEmpty(title))
+            if (!string.IsNullOrEmpty(descriptor.Title))
             {
                 sql += "AND post.Title LIKE ? ";
-                ps.Add(string.Format("%{0}%", title));
+                ps.Add(string.Format("%{0}%", descriptor.Title));
             }
-            if (!string.IsNullOrEmpty(content))
+            if (!string.IsNullOrEmpty(descriptor.Content))
             {
                 sql += "AND post.HtmlContent LIKE ? ";
-                ps.Add(string.Format("%{0}%", content));
+                ps.Add(string.Format("%{0}%", descriptor.Content));
             }
             sql += string.Format("ORDER BY post.CreateDate DESC LIMIT {0} OFFSET {1}", pageSize, (pageNumber - 1) * pageSize);
             var conn = new SQLiteAsyncConnection(DbName, SQLiteOpenFlags.ReadOnly, true);

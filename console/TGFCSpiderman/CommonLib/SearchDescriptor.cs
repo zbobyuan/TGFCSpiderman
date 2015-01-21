@@ -2,7 +2,7 @@
 
 namespace taiyuanhitech.TGFCSpiderman.CommonLib
 {
-    class SearchDescriptor
+    public class SearchDescriptor
     {
         public string UserName { get; set; }
         public string Title { get; set; }

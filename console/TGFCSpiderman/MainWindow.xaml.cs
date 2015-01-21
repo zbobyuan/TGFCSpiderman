@@ -257,8 +257,7 @@ namespace taiyuanhitech.TGFCSpiderman
             {
                 endDate = endDate.Value.AddSeconds(24*60*60 - 1);
             }
-            var result = await repos.SearchAsync(_searchViewModelSnapshot.UserName, _searchViewModelSnapshot.Title, _searchViewModelSnapshot.Content,
-                _searchViewModelSnapshot.StartDate, endDate, _searchViewModelSnapshot.TopicOnly, _searchViewModelSnapshot.SortOrder, _searchViewModelSnapshot.ReplyEndDate, SearchPageSize, pageIndex);
+            var result = await repos.SearchAsync(_searchViewModelSnapshot, SearchPageSize, pageIndex);
 
             SearchGrid.ItemsSource = result;
             SearchProgress.Visibility = Visibility.Hidden;
