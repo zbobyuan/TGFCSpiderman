@@ -17,6 +17,7 @@
         <localConverter:PostUriConverter x:Key="PostUriConverter" />
         <localConverter:ScrubHtmlConverter x:Key="ScrubHtmlConverter" />
         <localConverter:Bool2VisibilityConverter x:Key="Bool2VisibilityConverter" />
+        <localConverter:SortOrderItemSourceConverter x:Key="SortOrderItemSourceConverter" />
     </controls:MetroWindow.Resources>
     <DockPanel LastChildFill="True">
         <TextBlock DockPanel.Dock="Left"
@@ -101,9 +102,9 @@
                     <TextBlock Grid.Row="1" Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10">只搜主题</TextBlock>
                     <CheckBox Grid.Column="5" Grid.Row="1" Name="TopicOnly" HorizontalAlignment="Left" Margin="10" VerticalAlignment="Center" IsChecked="{Binding TopicOnly, Mode=OneWayToSource}"/>
                     <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10">排序</TextBlock>
-                    <ComboBox Grid.Row="2" Grid.Column="1" VerticalAlignment="Center" Margin="10" />
+                    <ComboBox Grid.Row="2" Grid.Column="1" VerticalAlignment="Center" Margin="10" ItemsSource="{Binding ElementName=TopicOnly,Path=IsChecked,Converter={StaticResource SortOrderItemSourceConverter}}" SelectedIndex="0" SelectionChanged="ComboBox_SelectionChanged"/>
                     <TextBlock Grid.Row="2" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="5" Visibility="{Binding ElementName=TopicOnly, Path=IsChecked, Converter={StaticResource Bool2VisibilityConverter}}">回复结束日期</TextBlock>
-                    <DatePicker Grid.Row="2" Grid.Column="3" VerticalAlignment="Center" Margin="10" SelectedDate="{Binding EndDate, Mode=OneWayToSource}" Visibility="{Binding ElementName=TopicOnly, Path=IsChecked, Converter={StaticResource Bool2VisibilityConverter}}"/>
+                    <DatePicker Grid.Row="2" Grid.Column="3" VerticalAlignment="Center" Margin="10" SelectedDate="{Binding ReplyEndDate, Mode=OneWayToSource}" Visibility="{Binding ElementName=TopicOnly, Path=IsChecked, Converter={StaticResource Bool2VisibilityConverter}}"/>
                     <StackPanel Grid.Row="2" Grid.Column="4" Grid.ColumnSpan="2" HorizontalAlignment="Center" Orientation="Horizontal">
                         <Button Name="Search" Content="搜索" Margin="0,5,0,0"  VerticalAlignment="Center" FontSize="16" FontWeight="Bold" MinWidth="100" IsDefault="True" Click="Search_OnClick"/>
                         <controls:ProgressRing Name="SearchProgress" Visibility="Hidden" IsActive="True" Width="35" Height="35" Margin="10,10,0,0"/>

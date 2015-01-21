@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using NLog;
@@ -257,7 +259,7 @@ namespace taiyuanhitech.TGFCSpiderman
                 endDate = endDate.Value.AddSeconds(24*60*60 - 1);
             }
             var result = await repos.SearchAsync(_searchViewModelSnapshot.UserName, _searchViewModelSnapshot.Title, _searchViewModelSnapshot.Content,
-                _searchViewModelSnapshot.StartDate, endDate, _searchViewModelSnapshot.TopicOnly, SearchPageSize, pageIndex);
+                _searchViewModelSnapshot.StartDate, endDate, _searchViewModelSnapshot.TopicOnly, _searchViewModelSnapshot.SortOrder, _searchViewModelSnapshot.ReplyEndDate, SearchPageSize, pageIndex);
 
             SearchGrid.ItemsSource = result;
             SearchProgress.Visibility = Visibility.Hidden;
@@ -280,6 +282,13 @@ namespace taiyuanhitech.TGFCSpiderman
         private async void Prev_OnClick(object sender, RoutedEventArgs e)
         {
             await DoSearch(--_currentSearchPageIndex);
+        }
+
+        private void ComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var cb = (ComboBox)sender;
+            if (null == cb.SelectedValue)
+                cb.SelectedIndex = 0;
         }
     }
 

@@ -64,7 +64,7 @@ namespace taiyuanhitech.TGFCSpiderman.Persistence
             }
         }
 
-        public Task<List<PostWithThreadTitle>> SearchAsync(string userName, string title, string content, DateTime? beginTime, DateTime? endTime, bool topicOnly, int pageSize = 100, int pageNumber = 1)
+        public Task<List<PostWithThreadTitle>> SearchAsync(string userName, string title, string content, DateTime? beginTime, DateTime? endTime, bool topicOnly, string sortOrder, DateTime? replyEndDate, int pageSize = 100, int pageNumber = 1)
         {
             /** 因为SQLite Entity Framework Provider 会将string.Contains(string)会映射成SQL中的CHARINDEX（）>=0，
               * 该方法无法正常运行，搜索出来的很多无关记录，所以只好手动实现like %%。
