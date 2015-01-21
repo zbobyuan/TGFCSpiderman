@@ -91,6 +91,7 @@
     <Compile Include="Configuration\IConfiguration.cs" />
     <Compile Include="Configuration\PageFetcherConfigElement.cs" />
     <Compile Include="Configuration\TGFCSpidermanSection.cs" />
+    <Compile Include="Converter\Bool2VisibilityConverter.cs" />
     <Compile Include="Converter\PostTitleConverter.cs" />
     <Compile Include="Converter\PostUriConverter.cs" />
     <Compile Include="Converter\ScrubHtmlConverter.cs" />

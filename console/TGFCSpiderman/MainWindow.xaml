@@ -16,6 +16,7 @@
         <localConverter:PostTitleConverter x:Key="PostTitleConverter" />
         <localConverter:PostUriConverter x:Key="PostUriConverter" />
         <localConverter:ScrubHtmlConverter x:Key="ScrubHtmlConverter" />
+        <localConverter:Bool2VisibilityConverter x:Key="Bool2VisibilityConverter" />
     </controls:MetroWindow.Resources>
     <DockPanel LastChildFill="True">
         <TextBlock DockPanel.Dock="Left"
@@ -89,19 +90,23 @@
                     </Grid.RowDefinitions>
                     <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10">用户名</TextBlock>
                     <ComboBox Grid.Row="0" Grid.Column="1" IsEditable="True" Margin="10" Text="{Binding UserName, Mode=OneWayToSource}"></ComboBox>
-                    <TextBlock Grid.Row="0" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10">标题</TextBlock>
+                    <TextBlock Grid.Row="0" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="5">标题</TextBlock>
                     <TextBox Grid.Row="0" Grid.Column="3" Margin="10" Text="{Binding Title, Mode=OneWayToSource, UpdateSourceTrigger=PropertyChanged}"></TextBox>
                     <TextBlock Grid.Row="0" Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10">内容</TextBlock>
                     <TextBox Grid.Row="0" Grid.Column="5" Margin="10" Text="{Binding Content, Mode=OneWayToSource, UpdateSourceTrigger=PropertyChanged}"></TextBox>
                     <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10">开始日期</TextBlock>
                     <DatePicker Grid.Row="1" Grid.Column="1" VerticalAlignment="Center" Margin="10" SelectedDate="{Binding StartDate, Mode=OneWayToSource}"/>
-                    <TextBlock Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10">结束日期</TextBlock>
+                    <TextBlock Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="5">结束日期</TextBlock>
                     <DatePicker Grid.Row="1" Grid.Column="3" VerticalAlignment="Center" Margin="10" SelectedDate="{Binding EndDate, Mode=OneWayToSource}"/>
-                    <TextBlock Grid.Row="1" Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10">只搜主帖</TextBlock>
-                    <CheckBox Grid.Column="5" HorizontalAlignment="Left" Margin="10" Grid.Row="1" VerticalAlignment="Center" IsChecked="{Binding TopicOnly, Mode=OneWayToSource}"/>
-                    <StackPanel Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="6" HorizontalAlignment="Center" Orientation="Horizontal">
-                        <Button Name="Search" Content="搜索" Margin="0,20,0,0"  VerticalAlignment="Center" FontSize="20" FontWeight="Bold" MinWidth="100" IsDefault="True" Click="Search_OnClick"/>
-                        <controls:ProgressRing Name="SearchProgress" Visibility="Hidden" IsActive="True" Width="35" Height="35" Margin="10,15,0,0"/>
+                    <TextBlock Grid.Row="1" Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10">只搜主题</TextBlock>
+                    <CheckBox Grid.Column="5" Grid.Row="1" Name="TopicOnly" HorizontalAlignment="Left" Margin="10" VerticalAlignment="Center" IsChecked="{Binding TopicOnly, Mode=OneWayToSource}"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10">排序</TextBlock>
+                    <ComboBox Grid.Row="2" Grid.Column="1" VerticalAlignment="Center" Margin="10" />
+                    <TextBlock Grid.Row="2" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="5" Visibility="{Binding ElementName=TopicOnly, Path=IsChecked, Converter={StaticResource Bool2VisibilityConverter}}">回复结束日期</TextBlock>
+                    <DatePicker Grid.Row="2" Grid.Column="3" VerticalAlignment="Center" Margin="10" SelectedDate="{Binding EndDate, Mode=OneWayToSource}" Visibility="{Binding ElementName=TopicOnly, Path=IsChecked, Converter={StaticResource Bool2VisibilityConverter}}"/>
+                    <StackPanel Grid.Row="2" Grid.Column="4" Grid.ColumnSpan="2" HorizontalAlignment="Center" Orientation="Horizontal">
+                        <Button Name="Search" Content="搜索" Margin="0,5,0,0"  VerticalAlignment="Center" FontSize="16" FontWeight="Bold" MinWidth="100" IsDefault="True" Click="Search_OnClick"/>
+                        <controls:ProgressRing Name="SearchProgress" Visibility="Hidden" IsActive="True" Width="35" Height="35" Margin="10,10,0,0"/>
                     </StackPanel>
                     <DataGrid Name="SearchGrid" IsReadOnly="True" EnableRowVirtualization="True" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="6" Margin="0 10 0 0" AutoGenerateColumns="False" GridLinesVisibility="Horizontal" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                         <DataGrid.RowDetailsTemplate>
