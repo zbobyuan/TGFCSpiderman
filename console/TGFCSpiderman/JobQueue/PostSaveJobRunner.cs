@@ -15,7 +15,7 @@ namespace taiyuanhitech.TGFCSpiderman.JobQueue
 
         protected override int BatchSize
         {
-            get { return 10; }//TODO:configurable
+            get { return 100; }//TODO:configurable
         }
 
         protected override void ExecuteJobs(List<Post> jobs)

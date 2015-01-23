@@ -70,7 +70,7 @@
                         <Button Name="Run" Content="运行" Margin="0,50,0,10"  VerticalAlignment="Center" FontSize="30" FontWeight="Bold" MinWidth="200" Click="Run_OnClick"/>
                         <controls:ProgressRing Name="RunProgress" Visibility="Hidden" IsActive="True" Width="40" Height="40" Margin="10,45,0,0"/>
                     </StackPanel>
-                    <TextBox Name="OutputBox" Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="3" Margin="30" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"></TextBox>
+                    <TextBox Name="OutputBox" Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="3" Margin="30" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" />
                 </Grid>
             </TabItem>
             <TabItem Header="搜索" controls:ControlsHelper.HeaderFontSize="20" DataContext="{Binding Source={StaticResource SearchViewModel}}">
@@ -91,11 +91,11 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10">用户名</TextBlock>
-                    <ComboBox Grid.Row="0" Grid.Column="1" IsEditable="True" Margin="10" Text="{Binding UserName, Mode=OneWayToSource}"></ComboBox>
+                    <ComboBox Grid.Row="0" Grid.Column="1" IsEditable="True" Margin="10" Text="{Binding UserName, Mode=OneWayToSource}" />
                     <TextBlock Grid.Row="0" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="5">标题</TextBlock>
-                    <TextBox Grid.Row="0" Grid.Column="3" Margin="10" Text="{Binding Title, Mode=OneWayToSource, UpdateSourceTrigger=PropertyChanged}"></TextBox>
+                    <TextBox Grid.Row="0" Grid.Column="3" Margin="10" Text="{Binding Title, Mode=OneWayToSource, UpdateSourceTrigger=PropertyChanged}" />
                     <TextBlock Grid.Row="0" Grid.Column="4" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10">内容</TextBlock>
-                    <TextBox Grid.Row="0" Grid.Column="5" Margin="10" Text="{Binding Content, Mode=OneWayToSource, UpdateSourceTrigger=PropertyChanged}"></TextBox>
+                    <TextBox Grid.Row="0" Grid.Column="5" Margin="10" Text="{Binding Content, Mode=OneWayToSource, UpdateSourceTrigger=PropertyChanged}" />
                     <TextBlock Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="10">开始日期</TextBlock>
                     <DatePicker Grid.Row="1" Grid.Column="1" VerticalAlignment="Center" Margin="10" SelectedDate="{Binding StartDate, Mode=OneWayToSource}"/>
                     <TextBlock Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="5">结束日期</TextBlock>
@@ -113,7 +113,7 @@
                     <DataGrid Name="SearchGrid" IsReadOnly="True" EnableRowVirtualization="True" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="6" Margin="0 10 0 0" AutoGenerateColumns="False" GridLinesVisibility="Horizontal" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                         <DataGrid.RowDetailsTemplate>
                             <DataTemplate>
-                                <TextBlock TextWrapping="Wrap" Text="{Binding HtmlContent, Converter={StaticResource ScrubHtmlConverter}}" Margin="40,10,10,5"></TextBlock>
+                                <TextBlock TextWrapping="Wrap" Text="{Binding HtmlContent, Converter={StaticResource ScrubHtmlConverter}}" Margin="40,10,10,5" />
                             </DataTemplate>
                         </DataGrid.RowDetailsTemplate>
                         <DataGrid.Columns>
@@ -150,8 +150,8 @@
                         </DataGrid.Columns>
                     </DataGrid>
                     <StackPanel Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="6" HorizontalAlignment="Center" Orientation="Horizontal">
-                        <Button Name="Prev" Content="上一页" Margin="0,5,5,0" Click="Prev_OnClick" IsEnabled="False"></Button>
-                        <Button Name="Next" Content="下一页" Margin="0,5,5,0" Click="Next_OnClick" IsEnabled="False"></Button>
+                        <Button Name="Prev" Content="上一页" Margin="0,5,5,0" Click="Prev_OnClick" IsEnabled="False" />
+                        <Button Name="Next" Content="下一页" Margin="0,5,5,0" Click="Next_OnClick" IsEnabled="False" />
                     </StackPanel>
                 </Grid>
             </TabItem>

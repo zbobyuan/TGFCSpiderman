@@ -5,10 +5,10 @@ using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 using NLog;
 using taiyuanhitech.TGFCSpiderman.CommonLib;
 using taiyuanhitech.TGFCSpiderman.JobQueue;
-using System.Threading.Tasks;
 using taiyuanhitech.TGFCSpiderman.Persistence;
 
 namespace taiyuanhitech.TGFCSpiderman
@@ -16,7 +16,7 @@ namespace taiyuanhitech.TGFCSpiderman
     public class TaskQueueManager
     {
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-        private const int InitialRetryInterval = 1000;//TODO:configurable
+        private const int InitialRetryInterval = 3000;//TODO:configurable
         private const int ForumPageMaxRetryTimes = 15;
         private const int ThreadPageMaxRetryTimes = 10;
         private const int PageFetchBatchSize = 3;

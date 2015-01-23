@@ -1,7 +1,7 @@
 ﻿using System;
+using taiyuanhitech.TGFCSpiderman.Configuration;
 using taiyuanhitech.TGFCSpiderman.IoC;
 using taiyuanhitech.TGFCSpiderman.Persistence;
-using taiyuanhitech.TGFCSpiderman.Configuration;
 
 namespace taiyuanhitech.TGFCSpiderman
 {
