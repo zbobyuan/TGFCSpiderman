@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
 using System.Windows;
 using taiyuanhitech.TGFCSpiderman.CommonLib;
 
@@ -19,11 +20,11 @@ namespace taiyuanhitech.TGFCSpiderman
 
         protected override void OnStartup(StartupEventArgs e)
         {
-            //if (!AppMutex.WaitOne(TimeSpan.Zero, true))
-            //{
-            //    MessageBox.Show("已经有一个在运行了，不能多开。");
-            //    Current.Shutdown();
-            //}
+            if (!AppMutex.WaitOne(TimeSpan.Zero, true))
+            {
+                MessageBox.Show("已经有一个在运行了，不能多开。");
+                Current.Shutdown();
+            }
             base.OnStartup(e);
             ComponentFactory.Startup();
         }
