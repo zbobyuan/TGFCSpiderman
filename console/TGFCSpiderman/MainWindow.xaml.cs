@@ -27,7 +27,7 @@ namespace taiyuanhitech.TGFCSpiderman
 
         public MainWindow()
         {
-            _app = (App)Application.Current;
+            _app = App.CurrentApp;
             InitializeComponent();
             _dashboardViewModel = (Dashboard)FindResource("DashboardViewModel");
             _searchViewModel = (SearchDescriptor)FindResource("SearchViewModel");
@@ -250,6 +250,11 @@ namespace taiyuanhitech.TGFCSpiderman
 
         private async Task DoSearch(int pageIndex)
         {
+            if (!_app.IsSignedin)
+            {
+                MessageBox.Show("不登录不能搜。");
+                return;
+            }
             SearchProgress.Visibility = Visibility.Visible;
             var repos = ComponentFactory.GetPostRepository();
             var endDate = _searchViewModelSnapshot.EndDate;

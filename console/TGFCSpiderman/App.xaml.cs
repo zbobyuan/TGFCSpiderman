@@ -8,6 +8,15 @@ namespace taiyuanhitech.TGFCSpiderman
     public partial class App
     {
         static readonly Mutex AppMutex = new Mutex(true, "[E0F06A0A-1399-4E86-ACC6-C48973F2B854}");
+
+        public static App CurrentApp
+        {
+            get
+            {
+                return Current as App;
+            }
+        }
+
         public RunningInfo RunningInfo { get; set; }
 
         public bool IsSignedin
