@@ -16,11 +16,12 @@ namespace taiyuanhitech.TGFCSpiderman
     public class TaskQueueManager
     {
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
-        private const int InitialRetryInterval = 100;//TODO:configurable
+        private const int InitialRetryInterval = 1000;//TODO:configurable
         private const int ForumPageMaxRetryTimes = 15;
         private const int ThreadPageMaxRetryTimes = 10;
         private const int PageFetchBatchSize = 3;
         private const int MaxRetryInterval = InitialRetryInterval * (2 << 10);
+        private const int DelayInHttpRequests = InitialRetryInterval;
         private const int CycleInterval = 10;
         private readonly IPageFetcher _pageFetcher;
         private readonly IPageProcessor _pageProcessor;
@@ -195,7 +196,7 @@ namespace taiyuanhitech.TGFCSpiderman
         private async Task<DateTime> ProcessThreadPageRequests(IEnumerable<PageFetchRequest> requests, DateTime expirationDate, Queue<PageFetchRequest> fetchQueue, CancellationToken ct)
         {
             var oldestReplyDate = DateTime.MaxValue;
-            var tasks = requests.Select((r, i) => _pageFetcher.Fetch(r, i * InitialRetryInterval, ct)).ToList();
+            var tasks = requests.Select((r, i) => _pageFetcher.Fetch(r, i * DelayInHttpRequests, ct)).ToList();
             while (tasks.Count > 0)
             {
                 ct.ThrowIfCancellationRequested();
