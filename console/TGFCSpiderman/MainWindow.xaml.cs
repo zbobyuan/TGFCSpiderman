@@ -260,7 +260,7 @@ namespace taiyuanhitech.TGFCSpiderman
             var endDate = _searchViewModelSnapshot.EndDate;
             if (endDate != null)
             {
-                endDate = endDate.Value.AddSeconds(24*60*60 - 1);
+                _searchViewModelSnapshot.EndDate = endDate.Value.AddSeconds(24 * 60 * 60 - 1);
             }
             var result = await repos.SearchAsync(_searchViewModelSnapshot, SearchPageSize, pageIndex);
 
