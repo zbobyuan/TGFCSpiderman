@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Data;
 
 namespace taiyuanhitech.TGFCSpiderman.Converter
@@ -15,7 +12,8 @@ namespace taiyuanhitech.TGFCSpiderman.Converter
         {
             ListForAllPosts = new List<string>{"发表时间","正分","负分","总分","争议度"};
             ListForTopicOnly = new List<string>(ListForAllPosts);
-            ListForTopicOnly.Insert(1, "回复数");
+            ListForTopicOnly.Insert(1, "最后回复时间");
+            ListForTopicOnly.Insert(2, "回复数");
         }
         public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
         {

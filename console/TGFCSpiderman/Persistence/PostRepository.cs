@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows.Documents;
 using SQLite;
 using taiyuanhitech.TGFCSpiderman.CommonLib;
 
@@ -13,54 +14,56 @@ namespace taiyuanhitech.TGFCSpiderman.Persistence
         public void SavePosts(IEnumerable<Post> posts)
         {
             var currentDate = DateTime.Now;
-            var conn = new SQLiteConnection(DbName, SQLiteOpenFlags.ReadWrite, true);
-            var inserts = new List<Post>();
-            var updates = new List<Post>();
-            var revisions = new List<Revision>();
-            foreach (var post in posts)
+            using (var conn = new SQLiteConnection(DbName, SQLiteOpenFlags.ReadWrite, true))
             {
-                var oldPost = conn.Table<Post>().FirstOrDefault(p => p.Id == post.Id);
-                if (oldPost == null)
+                var inserts = new List<Post>();
+                var updates = new List<Post>();
+                var revisions = new List<Revision>();
+                foreach (var post in posts)
                 {
-                    post.SaveDate = currentDate;
-                    inserts.Add(post);
-                }
-                else
-                {
-                    if (post.ModifyDate.HasValue && post.ModifyDate != oldPost.ModifyDate)//变了
+                    var oldPost = conn.Table<Post>().FirstOrDefault(p => p.Id == post.Id);
+                    if (oldPost == null)
                     {
-                        var revision = new Revision
-                        {
-                            PostId = post.Id,
-                            CreateDate = oldPost.ModifyDate ?? oldPost.CreateDate,
-                            Title = oldPost.Title,
-                            HtmlContent = oldPost.HtmlContent
-                        };
-                        revisions.Add(revision);
                         post.SaveDate = currentDate;
-                        updates.Add(post);
+                        inserts.Add(post);
                     }
                     else
-                    {//可能发生变化的只有少数几个属性
-                        if (post.PositiveRate != oldPost.PositiveRate
-                            || post.NegativeRate != oldPost.NegativeRate
-                            || post.UserName != oldPost.UserName
-                            || post.Order != oldPost.Order)
+                    {
+                        if (post.ModifyDate.HasValue && post.ModifyDate != oldPost.ModifyDate)//变了
                         {
+                            var revision = new Revision
+                            {
+                                PostId = post.Id,
+                                CreateDate = oldPost.ModifyDate ?? oldPost.CreateDate,
+                                Title = oldPost.Title,
+                                HtmlContent = oldPost.HtmlContent
+                            };
+                            revisions.Add(revision);
                             post.SaveDate = currentDate;
                             updates.Add(post);
                         }
+                        else
+                        {//可能发生变化的只有少数几个属性
+                            if (post.PositiveRate != oldPost.PositiveRate
+                                || post.NegativeRate != oldPost.NegativeRate
+                                || post.UserName != oldPost.UserName
+                                || post.Order != oldPost.Order)
+                            {
+                                post.SaveDate = currentDate;
+                                updates.Add(post);
+                            }
+                        }
                     }
                 }
-            }
-            if (inserts.Count > 0 || revisions.Count > 0 || updates.Count > 0)
-            {
-                conn.RunInTransaction(() =>
+                if (inserts.Count > 0 || revisions.Count > 0 || updates.Count > 0)
                 {
-                    inserts.ForEach(p => conn.Insert(p));
-                    updates.ForEach(p => conn.Update(p));
-                    revisions.ForEach(r => conn.Insert(r));
-                });
+                    conn.RunInTransaction(() =>
+                    {
+                        inserts.ForEach(p => conn.Insert(p));
+                        updates.ForEach(p => conn.Update(p));
+                        revisions.ForEach(r => conn.Insert(r));
+                    });
+                }
             }
         }
 
@@ -69,13 +72,46 @@ namespace taiyuanhitech.TGFCSpiderman.Persistence
             /** 因为SQLite Entity Framework Provider 会将string.Contains(string)会映射成SQL中的CHARINDEX（）>=0，
               * 该方法无法正常运行，搜索出来的很多无关记录，所以只好手动实现like %%。
             */
-            var sql = descriptor.TopicOnly ? "SELECT *, Title AS ThreadTitle FROM Post AS post WHERE [Order] = 1 "
-                    : "SELECT post.*, thread.Title AS ThreadTitle FROM " +
-                          "Post AS post LEFT OUTER JOIN Post AS thread " +
-                          "ON post.ThreadId = thread.ThreadId AND thread.[Order] = 1 " +
-                          "WHERE 1 = 1 ";
             var ps = new List<object>();
+            var sql = string.Format("{0}{1}{2}{3}", GetSelectStatement(descriptor),
+                GetFromStatement(descriptor),
+                GetWhereStatement(descriptor, ps),
+                GetOrderBy(descriptor));
 
+            sql += string.Format("LIMIT {0} OFFSET {1}", pageSize, (pageNumber - 1) * pageSize);
+            var conn = new SQLiteAsyncConnection(DbName, true);
+            var task = conn.QueryAsync<PostWithThreadTitle>(sql, ps.ToArray());
+            return task;
+        }
+
+        private string GetSelectStatement(SearchDescriptor descriptor)
+        {
+            return descriptor.TopicOnly ? "SELECT post.*, post.Title AS ThreadTitle " : "SELECT post.*, thread.Title AS ThreadTitle ";
+        }
+        private string GetFromStatement(SearchDescriptor descriptor)
+        {
+            if (descriptor.TopicOnly)
+            {
+                const string sql = "FROM Post AS post INNER JOIN (SELECT ThreadId, {0} FROM Post GROUP BY ThreadId) AS thread ON post.ThreadId = thread.ThreadId ";
+                var groupColumns = new List<string>();
+                if (descriptor.ReplyEndDate != null || descriptor.SortOrder == "最后回复时间")
+                {
+                    groupColumns.Add("MAX(CreateDate) AS LastReplyDate");
+                }
+                if (descriptor.SortOrder == "回复数")
+                {
+                    groupColumns.Add("MAX([Order]) AS ReplyCount");
+                }
+                return groupColumns.Count > 0 ? string.Format(sql, string.Join(",", groupColumns.ToArray())) : "FROM Post AS post ";
+            }
+            else
+            {
+                return "FROM Post AS post LEFT OUTER JOIN Post AS thread ON post.ThreadId = thread.ThreadId AND thread.[Order] = 1 ";
+            }
+        }
+        private string GetWhereStatement(SearchDescriptor descriptor, List<object> ps)
+        {
+            var sql = "";
             if (!string.IsNullOrEmpty(descriptor.UserName))
             {
                 sql += "AND post.UserName = ? ";
@@ -91,6 +127,11 @@ namespace taiyuanhitech.TGFCSpiderman.Persistence
                 sql += "AND post.CreateDate <= ? ";
                 ps.Add(descriptor.EndDate);
             }
+            if (descriptor.ReplyEndDate != null)
+            {
+                sql += "AND thread.LastReplyDate >= ? ";
+                ps.Add(descriptor.ReplyEndDate);
+            }
             if (!string.IsNullOrEmpty(descriptor.Title))
             {
                 sql += "AND post.Title LIKE ? ";
@@ -101,9 +142,48 @@ namespace taiyuanhitech.TGFCSpiderman.Persistence
                 sql += "AND post.HtmlContent LIKE ? ";
                 ps.Add(string.Format("%{0}%", descriptor.Content));
             }
-            sql += string.Format("ORDER BY post.CreateDate DESC LIMIT {0} OFFSET {1}", pageSize, (pageNumber - 1) * pageSize);
-            var conn = new SQLiteAsyncConnection(DbName, SQLiteOpenFlags.ReadOnly, true);
-            return conn.QueryAsync<PostWithThreadTitle>(sql, ps.ToArray());
+
+            if (sql == "")
+                return descriptor.TopicOnly ? "WHERE post.[Order] = 1 " : "";
+            else
+            {
+                return (descriptor.TopicOnly ? "WHERE post.[Order] = 1 " : "WHERE 1 = 1 ") + sql;
+            }
+        }
+
+        private string GetOrderBy(SearchDescriptor descriptor)
+        {
+            string sql = "ORDER BY ";
+            switch (descriptor.SortOrder)
+            {
+                case "发表时间":
+                    sql += "post.CreateDate ";
+                    break;
+                case "最后回复时间":
+                    sql += "thread.LastReplyDate ";
+                    break;
+                case "回复数":
+                    sql += "thread.ReplyCount ";
+                    break;
+                case "正分":
+                    sql += "post.PositiveRate ";
+                    break;
+                case "负分":
+                    sql += "post.NegativeRate ";
+                    break;
+                case "总分":
+                    sql += "post.PositiveRate - post.NegativeRate ";
+                    break;
+                case "争议度":
+                    sql += "CASE WHEN post.PositiveRate = 0 OR post.NegativeRate = 0 THEN 0 " +
+                                       "ELSE (post.PositiveRate + post.NegativeRate) * 1.0 * MIN(post.PositiveRate, post.NegativeRate) / MAX(post.PositiveRate, post.NegativeRate) " +
+                                       "END ";
+                    break;
+                default:
+                    sql += "1 ";
+                    break;
+            }
+            return sql + "DESC ";
         }
 
         #region search by LINQ
