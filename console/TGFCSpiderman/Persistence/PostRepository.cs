@@ -21,7 +21,10 @@ namespace taiyuanhitech.TGFCSpiderman.Persistence
                 var revisions = new List<Revision>();
                 foreach (var post in posts)
                 {
-                    var oldPost = conn.Table<Post>().FirstOrDefault(p => p.Id == post.Id);
+                    var post1 = post;
+                    //此处千万不能听信ReSharper的替换成FirstOrDefault(p => p.Id == post.Id)，因为SQLiteConnection不足够聪明，如果不提供Where表达式将会把表中所有数据全取出来。
+                    // ReSharper disable once ReplaceWithSingleCallToFirstOrDefault
+                    var oldPost = conn.Table<Post>().Where(p => p.Id == post1.Id).FirstOrDefault();
                     if (oldPost == null)
                     {
                         post.SaveDate = currentDate;
