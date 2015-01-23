@@ -127,6 +127,8 @@
                             </DataGridTextColumn>
                             <DataGridTextColumn Binding="{Binding Path=UserName, Mode=OneWay}" Header="作者" MinWidth="100"/>
                             <DataGridTextColumn Binding="{Binding Path=CreateDate, StringFormat={}{0:yy/MM/dd HH:mm}, Mode=OneWay}" Header="发表时间" Width="100"/>
+                            <DataGridTextColumn Binding="{Binding Path=PositiveRate}" Header="正分" Width="45"/>
+                            <DataGridTextColumn Binding="{Binding Path=NegativeRate}" Header="负分" Width="45"/>
                             <DataGridTemplateColumn Header="打开">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
