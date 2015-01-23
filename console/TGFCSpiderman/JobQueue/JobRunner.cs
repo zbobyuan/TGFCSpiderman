@@ -26,7 +26,7 @@ namespace taiyuanhitech.TGFCSpiderman.JobQueue
                 throw new InvalidOperationException("Cannot run a runner whick is running.");
             }
             _jobQueue = new BlockingCollection<TRequest>();
-            _worker = new Thread(DoWork) { IsBackground = true };
+            _worker = new Thread(DoWork) ;
             _worker.Start();
         }
 
@@ -46,11 +46,6 @@ namespace taiyuanhitech.TGFCSpiderman.JobQueue
         public void Stop()
         {
             _jobQueue.CompleteAdding();
-            if (_worker != null)
-            {
-                _worker.Join();
-                _worker = null;
-            }
         }
         protected abstract void ExecuteJobs(List<TRequest> jobs);
 

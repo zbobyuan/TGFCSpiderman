@@ -24,6 +24,7 @@ namespace taiyuanhitech.TGFCSpiderman
         private SearchDescriptor _searchViewModelSnapshot;
         private int _currentSearchPageIndex = 1;
         private CancellationTokenSource _cts;
+        private TaskQueueManager _taskManager;
 
         public MainWindow()
         {
@@ -49,6 +50,15 @@ namespace taiyuanhitech.TGFCSpiderman
             {
                 Password.Password = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
                 Login.Content = "退出";
+            }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            base.OnClosed(e);
+            if (_taskManager != null)
+            {
+                _taskManager.Stop();
             }
         }
 
@@ -132,7 +142,7 @@ namespace taiyuanhitech.TGFCSpiderman
             Login.IsEnabled = false;
             OutputBox.Clear();
             var outputCount = 0;
-            var taskManager = new TaskQueueManager(ComponentFactory.GetPageFetcher(),
+            _taskManager = new TaskQueueManager(ComponentFactory.GetPageFetcher(),
                 ComponentFactory.GetPageProcessor(), s =>
                 {
                     Action output = () =>
@@ -184,7 +194,7 @@ namespace taiyuanhitech.TGFCSpiderman
 
             try
             {
-                await taskManager.Run(_app.RunningInfo, _cts.Token);
+                await _taskManager.Run(_app.RunningInfo, _cts.Token);
             }
             catch (OperationCanceledException)
             {

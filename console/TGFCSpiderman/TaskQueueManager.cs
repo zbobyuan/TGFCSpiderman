@@ -160,12 +160,17 @@ namespace taiyuanhitech.TGFCSpiderman
             }
             finally
             {
-                _pageSaveJobRunner.Stop();
+                Stop();
                 watch.Stop();
                 runningInfo.IsCompleted = true;
                 SaveRunningInfo(runningInfo);
                 _outputAction(string.Format("运行完成，耗时 {0} 秒，约{1:0.0}分钟", watch.Elapsed.TotalSeconds, watch.Elapsed.TotalSeconds / 60.0));
             }
+        }
+
+        public void Stop()
+        {
+            _pageSaveJobRunner.Stop();
         }
 
         private void HandleForumPageMillError(string entryPointUrl, MillStatus processStatus)
@@ -328,14 +333,7 @@ namespace taiyuanhitech.TGFCSpiderman
         private void SaveRunningInfo(RunningInfo running)
         {
             running.LastSavedTime = DateTime.Now;
-            try
-            {
-                _runningInfoRepository.SaveAsync(running).Wait();
-            }
-            catch(Exception e)
-            {
-                Logger.Error(e);
-            }
+            _runningInfoRepository.SaveAsync(running);
         }
     }
 
