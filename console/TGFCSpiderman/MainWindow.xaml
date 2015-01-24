@@ -6,7 +6,7 @@
                       xmlns:localViewModel="clr-namespace:taiyuanhitech.TGFCSpiderman.ViewModel"
                       xmlns:localConverter="clr-namespace:taiyuanhitech.TGFCSpiderman.Converter"    
                       x:Class="taiyuanhitech.TGFCSpiderman.MainWindow"
-                      Title="GFCSpidermanX"
+                      Title="GFCSpiderman"
                       Height="600"
                       Width="800"
                       TitleCaps="False"
@@ -167,7 +167,7 @@
                 <FlowDocumentScrollViewer>
                     <FlowDocument>
                         <Paragraph>
-                            <Span FontSize="36" FontWeight="Bold">TGFCSpiderman</Span>
+                            <Span FontSize="36" FontWeight="Bold">TGFCSpiderman</Span> <Run Name="VersionRun"></Run>
                             <LineBreak />
                             <Span>Copyright © 2015 Bob Yuan</Span>
                             <LineBreak />

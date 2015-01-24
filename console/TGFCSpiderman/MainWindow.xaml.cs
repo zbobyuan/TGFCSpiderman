@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -51,6 +52,7 @@ namespace taiyuanhitech.TGFCSpiderman
                 Password.Password = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
                 Login.Content = "退出";
             }
+            VersionRun.Text = GetVersionInfo();
         }
 
         protected override void OnClosed(EventArgs e)
@@ -302,6 +304,11 @@ namespace taiyuanhitech.TGFCSpiderman
             var cb = (ComboBox)sender;
             if (null == cb.SelectedValue)
                 cb.SelectedIndex = 0;
+        }
+        private string GetVersionInfo()
+        {
+            var obj = Assembly.GetExecutingAssembly().GetName().Version;
+            return string.Format("V{0}.{1}", obj.Major, obj.Minor);
         }
     }
 
