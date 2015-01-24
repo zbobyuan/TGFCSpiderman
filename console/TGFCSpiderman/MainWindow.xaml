@@ -155,6 +155,92 @@
                     </StackPanel>
                 </Grid>
             </TabItem>
+            <TabItem Header="关于我" controls:ControlsHelper.HeaderFontSize="20" DataContext="{Binding Source={StaticResource SearchViewModel}}">
+                <TabItem.Resources>
+                    <Style TargetType="ListItem">
+                        <Setter Property="Margin" Value="0,0,10,10"/>
+                    </Style>
+                    <Style TargetType="Hyperlink">
+                        <EventSetter Event="Click" Handler="Hyperlink_OnClick"></EventSetter>
+                    </Style>
+                </TabItem.Resources>
+                <FlowDocumentScrollViewer>
+                    <FlowDocument>
+                        <Paragraph>
+                            <Span FontSize="36" FontWeight="Bold">TGFCSpiderman</Span>
+                            <LineBreak />
+                            <Span>Copyright © 2015 Bob Yuan</Span>
+                            <LineBreak />
+                            <Hyperlink NavigateUri="https://github.com/zbobyuan/TGFCSpiderman">https://github.com/zbobyuan/TGFCSpiderman</Hyperlink>
+                        </Paragraph>
+                        <Paragraph FontSize="20">本软件使用以下组件：</Paragraph>
+                        <List>
+                            <ListItem>
+                                <Paragraph>
+                                    <Span>MahApps.Metro</Span>
+                                    <LineBreak />
+                                    <Hyperlink NavigateUri="http://mahapps.com/">http://mahapps.com/</Hyperlink>
+                                </Paragraph>
+                            </ListItem>
+                            <ListItem>
+                                <Paragraph>
+                                    <Span>CsQuery</Span>
+                                    <LineBreak />
+                                    <Hyperlink NavigateUri="https://github.com/jamietre/CsQuery">https://github.com/jamietre/CsQuery</Hyperlink>
+                                </Paragraph>
+                                <Paragraph>Code use license for CsQuery</Paragraph>
+                                <Paragraph>Copyright (c) 2012 James Treworgy</Paragraph>
+                                <Paragraph>LICENSE (MIT License)</Paragraph>
+                                <Paragraph>Permission is hereby granted, free of charge, to any person obtaining a copy
+                                    of this software and associated documentation files (the "Software"), to deal
+                                    in the Software without restriction, including without limitation the rights to
+                                    use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+                                    of the Software, and to permit persons to whom the Software is furnished to do
+                                    so, subject to the following conditions:</Paragraph>
+                                <Paragraph>
+                                    The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.</Paragraph>
+                            </ListItem>
+                            <ListItem>
+                                <Paragraph>
+                                    <Span>NLog</Span>
+                                    <LineBreak />
+                                    <Hyperlink NavigateUri="https://github.com/NLog/NLog">https://github.com/NLog/NLog</Hyperlink>
+                                </Paragraph>
+                                <Paragraph>Copyright (c) 2004-2011 Jaroslaw Kowalski
+                                    &lt;jaak@jkowalski.net&gt;
+                                </Paragraph>
+                                <Paragraph>All rights reserved.</Paragraph>
+                                <Paragraph>Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:</Paragraph>
+                                <Paragraph>* Redistributions of source code must retain the above copyright notice,
+this list of conditions and the following disclaimer.</Paragraph>
+                                <Paragraph>
+                                    * Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation
+and/or other materials provided with the distribution.</Paragraph>
+                                <Paragraph>
+                                    * Neither the name of Jaroslaw Kowalski nor the names of its
+contributors may be used to endorse or promote products derived from this
+software without specific prior written permission.
+                                </Paragraph>
+
+                            </ListItem>
+                            <ListItem>
+                                <Paragraph>
+                                    <Span>sqlite-net</Span>
+                                    <LineBreak />
+                                    <Hyperlink NavigateUri="https://github.com/praeclarum/sqlite-net">https://github.com/praeclarum/sqlite-net</Hyperlink>
+                                </Paragraph>
+                                <Paragraph>Copyright (c) 2009-2012 Krueger Systems, Inc.</Paragraph>
+                                <Paragraph>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</Paragraph>
+                                <Paragraph>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</Paragraph>
+                            </ListItem>
+                        </List>
+                    </FlowDocument>
+                </FlowDocumentScrollViewer>
+            </TabItem>
         </TabControl>
     </DockPanel>
 </controls:MetroWindow>
