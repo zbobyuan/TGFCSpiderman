@@ -177,6 +177,13 @@
                         <List>
                             <ListItem>
                                 <Paragraph>
+                                    <Span>SQLite</Span>
+                                    <LineBreak />
+                                    <Hyperlink NavigateUri="http://www.sqlite.org">http://www.sqlite.org</Hyperlink>
+                                </Paragraph>
+                            </ListItem>
+                            <ListItem>
+                                <Paragraph>
                                     <Span>MahApps.Metro</Span>
                                     <LineBreak />
                                     <Hyperlink NavigateUri="http://mahapps.com/">http://mahapps.com/</Hyperlink>
