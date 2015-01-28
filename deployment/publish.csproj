@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="12.0" DefaultTargets="Publish">
+  <PropertyGroup>
+    <MSBuildCommunityTasksPath>.</MSBuildCommunityTasksPath>
+  </PropertyGroup>
+  <Import Project="MSBuild.Community.Tasks.Targets"/>
+  <PropertyGroup>
+    <TGFCSpidermanProjectDir>..\console\TGFCSpiderman\</TGFCSpidermanProjectDir>
+  </PropertyGroup>
+  <ItemGroup>
+      <FilesInUpdateBall Include="$(updated_files)" /><!--updated_files comes from MSBuild command param: MSBuild /p:updated_files="CsQuery.dll;HelloWorld.dll;Testme.config"-->
+  </ItemGroup>
+  <Target Name="Publish">
+    <MSBuild Projects="$(TGFCSpidermanProjectDir)TGFCSpiderman.csproj" Properties="Configuration=Release" Targets="Clean;Build"/>
+    <GetAssemblyIdentity AssemblyFiles="$(TGFCSpidermanProjectDir)bin\Release\TGFCSpiderman.exe">
+      <Output TaskParameter="Assemblies" ItemName="AssemblyIdentitie"/>
+    </GetAssemblyIdentity>
+    <PropertyGroup>
+      <VersionDir>publish_bin\%(AssemblyIdentitie.Version)\</VersionDir>
+    </PropertyGroup>
+    <RemoveDir Directories="$(VersionDir)Release" Condition="Exists('$(VersionDir)Release')" />
+    <MakeDir Directories="$(VersionDir)Release"/>
+    <Exec Command="copy $(TGFCSpidermanProjectDir)bin\Release\*.* $(VersionDir)Release"/>
+    <RemoveDir Directories="$(VersionDir)Publish" Condition="Exists('$(VersionDir)Publish')" />
+    <MakeDir Directories="$(VersionDir)Publish"/>
+    <Exec Command="copy $(VersionDir)Release\*.dll $(VersionDir)Publish"/>
+    <Exec Command="copy $(VersionDir)Release\*.exe $(VersionDir)Publish"/>
+    <Exec Command="copy $(VersionDir)Release\*.config $(VersionDir)Publish"/>
+    <Exec Command="copy $(VersionDir)Release\*.sqlite $(VersionDir)Publish"/>
+    <ItemGroup>
+      <FullZipFiles Include="$(VersionDir)Publish\*.*" />
+      <UpdateZipFiles Include="$(VersionDir)Publish\*.exe" />
+      <UpdateZipFiles Include="$(VersionDir)Publish\%(FilesInUpdateBall.Identity)" Condition="'$(updated_files)' != ''"/>
+    </ItemGroup>
+    <Zip Files="@(FullZipFiles)" ZipFileName="$(VersionDir)TGFCSpiderman_v%(AssemblyIdentitie.Version)_full.zip" Flatten="true" />
+    <Zip Files="@(UpdateZipFiles)" ZipFileName="$(VersionDir)TGFCSpiderman_v%(AssemblyIdentitie.Version)_update.zip" Flatten="true" />
+  </Target>
+</Project>
