@@ -155,7 +155,7 @@
                     </StackPanel>
                 </Grid>
             </TabItem>
-            <TabItem Header="关于我" controls:ControlsHelper.HeaderFontSize="20" DataContext="{Binding Source={StaticResource SearchViewModel}}">
+            <TabItem Header="关于我" controls:ControlsHelper.HeaderFontSize="20">
                 <TabItem.Resources>
                     <Style TargetType="ListItem">
                         <Setter Property="Margin" Value="0,0,10,10"/>
