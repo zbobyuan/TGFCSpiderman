@@ -248,6 +248,48 @@ software without specific prior written permission.
                     </FlowDocument>
                 </FlowDocumentScrollViewer>
             </TabItem>
+            <TabItem Header="在线更新" controls:ControlsHelper.HeaderFontSize="20">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"></RowDefinition>
+                        <RowDefinition Height="Auto"></RowDefinition>
+                        <RowDefinition Height="*"></RowDefinition>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition></ColumnDefinition>
+                        <ColumnDefinition></ColumnDefinition>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal">
+                        <TextBlock VerticalAlignment="Center" FontSize="20" Margin="10,0,10,0">当前版本:</TextBlock>
+                        <TextBlock VerticalAlignment="Center" FontSize="20" Margin="10,0,10,0">0.1.0.0</TextBlock>
+                        <Button VerticalAlignment="Center" FontSize="20" Margin="30,0,10,0" Width="120">检查更新</Button>
+                        <controls:ProgressRing Name="xe" Visibility="Visible" IsActive="True" Width="35" Height="35" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Margin="20,0,0,0" FontSize="20" VerticalAlignment="Center">已经是最新版本，无需更新。</TextBlock>
+                    <StackPanel Grid.Row="1" Grid.Column="0">
+                        <StackPanel Orientation="Horizontal" Margin="0,30,0,0">
+                            <TextBlock VerticalAlignment="Center" FontSize="20" Margin="10,0,10,0">最新版本:</TextBlock>
+                            <TextBlock VerticalAlignment="Center" FontSize="20" Margin="10,0,10,0">2.1.0.0</TextBlock>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                            <TextBlock VerticalAlignment="Center" FontSize="20" Margin="10,0,10,0">下载大小:</TextBlock>
+                            <TextBlock VerticalAlignment="Center" FontSize="20" Margin="10,0,10,0">350KB</TextBlock>
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Grid.Column="1" Width="350" HorizontalAlignment="Left" Margin="0,30,0,0">
+                        <Button FontSize="20">下载并在下次启动时自动更新</Button>
+                        <ProgressBar Margin="0,10,0,0" Value="90"></ProgressBar>
+                    </StackPanel>
+                    <FlowDocumentScrollViewer Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" VerticalScrollBarVisibility="Auto" Margin="0,20,0,0">
+                        <FlowDocument>
+                            <Paragraph>
+                                <Run Name="UpdateDescRun" xml:space="preserve">1、自动更新自动更新自动更新自动更新自动更新自动更新自动更新
+2、自动保存图片自动保存图片自动保存图片自动保存图片自动保存图片自动保存图片自动保存图片</Run>
+                            </Paragraph>
+                        </FlowDocument>
+                    </FlowDocumentScrollViewer>
+                </Grid>
+            </TabItem>
         </TabControl>
     </DockPanel>
 </controls:MetroWindow>
