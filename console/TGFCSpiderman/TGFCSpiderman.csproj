@@ -103,6 +103,7 @@
     <Compile Include="JobQueue\JobRunner.cs" />
     <Compile Include="JobQueue\PostSaveJobRunner.cs" />
     <Compile Include="MillPageHelper.cs" />
+    <Compile Include="OnlineUpdate\OnlineUpdateManager.cs" />
     <Compile Include="PageFetcher.cs" />
     <Compile Include="PageProcessor.cs" />
     <Compile Include="Persistence\IPostRepository.cs" />
@@ -163,20 +164,6 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="t.ico" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\..\vendor_licenses\CsQuery_LICENSE.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="..\..\vendor_licenses\NLog_LICENSE.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="..\..\vendor_licenses\MahApps_LICENSE">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="..\..\vendor_licenses\sqlite-net_license.md">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <None Include="sqlite3.dll">

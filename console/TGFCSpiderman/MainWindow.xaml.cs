@@ -10,6 +10,7 @@ using System.Windows.Input;
 using NLog;
 using taiyuanhitech.TGFCSpiderman.CommonLib;
 using taiyuanhitech.TGFCSpiderman.Configuration;
+using taiyuanhitech.TGFCSpiderman.OnlineUpdate;
 using taiyuanhitech.TGFCSpiderman.ViewModel;
 
 namespace taiyuanhitech.TGFCSpiderman
@@ -305,9 +306,9 @@ namespace taiyuanhitech.TGFCSpiderman
             if (null == cb.SelectedValue)
                 cb.SelectedIndex = 0;
         }
-        private string GetVersionInfo()
+        private static string GetVersionInfo()
         {
-            var obj = Assembly.GetExecutingAssembly().GetName().Version;
+            var obj = OnlineUpdateManager.GetCurrentVersion();
             return string.Format("V{0}.{1}", obj.Major, obj.Minor);
         }
     }
