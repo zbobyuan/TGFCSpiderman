@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Diagnostics;
-using System.IO;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -327,9 +325,11 @@ namespace taiyuanhitech.TGFCSpiderman
                 }
                 else
                 {
-                    UpdateStatusBlock.Text = "发现新版本。";
-                    App.CurrentApp.NewUpdateInfo = updateInfo;
-                    ShowUpdateInfo(updateInfo);
+                    if (App.CurrentApp.NewUpdateInfo == null || App.CurrentApp.NewUpdateInfo.NewVersion != updateInfo.NewVersion)
+                    {
+                        App.CurrentApp.NewUpdateInfo = updateInfo;
+                        ShowUpdateInfo(updateInfo);
+                    }
                 }
             }
             catch
@@ -345,6 +345,7 @@ namespace taiyuanhitech.TGFCSpiderman
 
         private void ShowUpdateInfo(UpdateInfo updateInfo)
         {
+            UpdateStatusBlock.Text = "发现新版本。";
             UpdateDescRun.Text = updateInfo.Desctription;
             NewVersionNumberBlock.Text = updateInfo.NewVersion.ToString();
             UpdatePackageSize.Text = GetHumanReadableSize(updateInfo.UpdatePackageSize);
@@ -364,20 +365,28 @@ namespace taiyuanhitech.TGFCSpiderman
             if (App.CurrentApp.NewUpdateInfo == null)
                 return;
 
+
+            CheckUpdateButton.IsEnabled = false;
             DownloadButton.IsEnabled = false;
-            var stream = new MemoryStream();
-            DownloadProgress.Value = 1;
             DownloadProgress.Visibility = Visibility.Visible;
             try
             {
-                await OnlineUpdateManager.DownLoadUpdatePackageAsync(App.CurrentApp.NewUpdateInfo, stream, new Progress<int>(i =>
-                {
-                    Dispatcher.InvokeAsync(() => DownloadProgress.Value = i, DispatcherPriority.Normal);
-                }));
+                await OnlineUpdateManager.SetupUpdateAsync(App.CurrentApp.NewUpdateInfo, new Progress<DownloadProgress>(d =>
+                        {
+                            Dispatcher.InvokeAsync(() => DownloadProgress.Value = d.CompletedPercentage,
+                                DispatcherPriority.Normal);
+                            UpdateStatusBlock.Text = d.Status;
+                        }));
+                UpdateStatusBlock.Text = "准备就绪，软件关闭时将会自动更新。";
+            }
+            catch
+            {
+                UpdateStatusBlock.Text = "准备更新过程中发生错误，请重试。";
+                DownloadButton.IsEnabled = true;
             }
             finally
             {
-                DownloadButton.IsEnabled = true;
+                CheckUpdateButton.IsEnabled = true;
             }
         }
     }

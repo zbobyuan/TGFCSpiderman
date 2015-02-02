@@ -283,8 +283,7 @@ software without specific prior written permission.
                     <FlowDocumentScrollViewer Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" VerticalScrollBarVisibility="Auto" Margin="0,20,0,0" Visibility="Hidden" Name="UpdateDescription">
                         <FlowDocument>
                             <Paragraph>
-                                <Run Name="UpdateDescRun" xml:space="preserve">1、自动更新自动更新自动更新自动更新自动更新自动更新自动更新
-2、自动保存图片自动保存图片自动保存图片自动保存图片自动保存图片自动保存图片自动保存图片</Run>
+                                <Run Name="UpdateDescRun" xml:space="preserve"/>
                             </Paragraph>
                         </FlowDocument>
                     </FlowDocumentScrollViewer>
