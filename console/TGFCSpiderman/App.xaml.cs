@@ -27,6 +27,8 @@ namespace taiyuanhitech.TGFCSpiderman
             }
         }
 
+        internal OnlineUpdate.UpdateInfo NewUpdateInfo { get; set; }
+
         protected override void OnStartup(StartupEventArgs e)
         {
             if (!AppMutex.WaitOne(TimeSpan.Zero, true))

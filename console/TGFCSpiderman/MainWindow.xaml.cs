@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,6 +8,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Threading;
 using NLog;
 using taiyuanhitech.TGFCSpiderman.CommonLib;
 using taiyuanhitech.TGFCSpiderman.Configuration;
@@ -53,7 +55,7 @@ namespace taiyuanhitech.TGFCSpiderman
                 Password.Password = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
                 Login.Content = "退出";
             }
-            VersionRun.Text = GetVersionInfo();
+            VersionRun.Text = CurrentVersionBlock.Text = GetVersionInfo();
         }
 
         protected override void OnClosed(EventArgs e)
@@ -308,8 +310,75 @@ namespace taiyuanhitech.TGFCSpiderman
         }
         private static string GetVersionInfo()
         {
-            var obj = OnlineUpdateManager.GetCurrentVersion();
-            return string.Format("V{0}.{1}", obj.Major, obj.Minor);
+            return OnlineUpdateManager.GetCurrentVersion().ToString();
+        }
+
+        private async void CheckUpdate_OnClick(object sender, RoutedEventArgs e)
+        {
+            CheckUpdateButton.IsEnabled = false;
+            CheckupdateRing.Visibility = Visibility.Visible;
+
+            try
+            {
+                var updateInfo = await OnlineUpdateManager.GetUpdateInfoAsync();
+                if (updateInfo == null)
+                {
+                    UpdateStatusBlock.Text = "已经是最新版本，无需更新。";
+                }
+                else
+                {
+                    UpdateStatusBlock.Text = "发现新版本。";
+                    App.CurrentApp.NewUpdateInfo = updateInfo;
+                    ShowUpdateInfo(updateInfo);
+                }
+            }
+            catch
+            {
+                MessageBox.Show("检查更新时出现错误，请稍候重试。");
+            }
+            finally
+            {
+                CheckupdateRing.Visibility = Visibility.Collapsed;
+                CheckUpdateButton.IsEnabled = true;
+            }
+        }
+
+        private void ShowUpdateInfo(UpdateInfo updateInfo)
+        {
+            UpdateDescRun.Text = updateInfo.Desctription;
+            NewVersionNumberBlock.Text = updateInfo.NewVersion.ToString();
+            UpdatePackageSize.Text = GetHumanReadableSize(updateInfo.UpdatePackageSize);
+            UpdateSummaryPanel.Visibility = UpdateControlPanel.Visibility = UpdateDescription.Visibility = Visibility.Visible;
+        }
+
+        private static string GetHumanReadableSize(int b)
+        {
+            if (b < 1024000)
+                return (b / 1024f).ToString("0.00") + " KB";
+
+            return (b / 1024f / 1024f).ToString("0.00") + " MB";
+        }
+
+        private async void Download_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (App.CurrentApp.NewUpdateInfo == null)
+                return;
+
+            DownloadButton.IsEnabled = false;
+            var stream = new MemoryStream();
+            DownloadProgress.Value = 1;
+            DownloadProgress.Visibility = Visibility.Visible;
+            try
+            {
+                await OnlineUpdateManager.DownLoadUpdatePackageAsync(App.CurrentApp.NewUpdateInfo, stream, new Progress<int>(i =>
+                {
+                    Dispatcher.InvokeAsync(() => DownloadProgress.Value = i, DispatcherPriority.Normal);
+                }));
+            }
+            finally
+            {
+                DownloadButton.IsEnabled = true;
+            }
         }
     }
 

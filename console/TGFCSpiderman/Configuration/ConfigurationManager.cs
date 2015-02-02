@@ -73,5 +73,11 @@ namespace taiyuanhitech.TGFCSpiderman.Configuration
             _config.Save(ConfigurationSaveMode.Modified);
             System.Configuration.ConfigurationManager.RefreshSection(SectionName);
         }
+
+        internal OnlineUpdateConfigElement GetOnlineUpdateConfig()
+        {
+            var section = (TGFCSpidermanSection)_config.GetSection(SectionName);
+            return section != null ? section.OnlineUpdateElement : new OnlineUpdateConfigElement { CheckUpdateUrl = OnlineUpdateConfigElement.DefaultUrl };
+        }
     }
 }
