@@ -248,7 +248,7 @@ software without specific prior written permission.
                     </FlowDocument>
                 </FlowDocumentScrollViewer>
             </TabItem>
-            <TabItem Header="在线更新" controls:ControlsHelper.HeaderFontSize="20">
+            <TabItem Name="OnlineUpdateTab" Header="在线更新" controls:ControlsHelper.HeaderFontSize="20">
                 <Grid Margin="10">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"></RowDefinition>

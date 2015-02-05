@@ -65,6 +65,21 @@ namespace taiyuanhitech.TGFCSpiderman
             }
         }
 
+        protected override void OnContentRendered(EventArgs e)
+        {
+            base.OnContentRendered(e);
+            var checkUpdateTask = OnlineUpdateManager.GetUpdateInfoAsync();
+            checkUpdateTask.ContinueWith(t =>
+            {
+                var updateInfo = t.Result;
+                if (App.CurrentApp.NewUpdateInfo == null || App.CurrentApp.NewUpdateInfo.NewVersion != t.Result.NewVersion)
+                {
+                    App.CurrentApp.NewUpdateInfo = updateInfo;
+                    Dispatcher.InvokeAsync(() => ShowUpdateInfo(updateInfo));
+                }
+            });
+        }
+
         private async void Signin_OnClick(object sender, RoutedEventArgs e)
         {
             if (_dashboardViewModel.LoginInfoEnabled)
@@ -345,6 +360,7 @@ namespace taiyuanhitech.TGFCSpiderman
 
         private void ShowUpdateInfo(UpdateInfo updateInfo)
         {
+            OnlineUpdateTab.Header = "立即更新";
             UpdateStatusBlock.Text = "发现新版本。";
             UpdateDescRun.Text = updateInfo.Desctription;
             NewVersionNumberBlock.Text = updateInfo.NewVersion.ToString();
