@@ -105,6 +105,7 @@ namespace taiyuanhitech.TGFCSpiderman.OnlineUpdate
             {//用TGFCSpiderman更新updater，再用updater更新TGFCSpiderman
                 File.Copy(sourceUpdater, Path.Combine(Directory.GetCurrentDirectory(), "TGSUpdater.exe"), true);
             }
+            new ConfigurationManager().SavePendingUpdate(extractFolder, updateInfo.NewVersion.ToString());
             progress.Report(new DownloadProgress(100, ""));
         }
 

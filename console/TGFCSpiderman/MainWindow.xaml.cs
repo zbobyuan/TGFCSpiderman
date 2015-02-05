@@ -377,7 +377,7 @@ namespace taiyuanhitech.TGFCSpiderman
                                 DispatcherPriority.Normal);
                             UpdateStatusBlock.Text = d.Status;
                         }));
-                UpdateStatusBlock.Text = "准备就绪，软件关闭时将会自动更新。";
+                UpdateStatusBlock.Text = "准备就绪，下次启动时将会自动更新。";
             }
             catch
             {
