@@ -16,5 +16,18 @@ namespace taiyuanhitech.TGFCSpiderman.Configuration
             get { return (AuthConfigElement)this["girls"]; }
             set { this["girls"] = value; }
         }
+        [ConfigurationProperty("onlineUpdate")]
+        public OnlineUpdateConfigElement OnlineUpdateElement
+        {
+            get { return (OnlineUpdateConfigElement)this["onlineUpdate"];}
+            set { this["onlineUpdate"] = value; }
+        }
+
+        [ConfigurationProperty("pendingUpdate")]
+        public PendingUpdateElement PendingUpdateElement
+        {
+            get { return (PendingUpdateElement)this["pendingUpdate"]; }
+            set { this["pendingUpdate"] = value; }
+        }
     }
 }

@@ -155,7 +155,7 @@
                     </StackPanel>
                 </Grid>
             </TabItem>
-            <TabItem Header="关于我" controls:ControlsHelper.HeaderFontSize="20" DataContext="{Binding Source={StaticResource SearchViewModel}}">
+            <TabItem Header="关于我" controls:ControlsHelper.HeaderFontSize="20">
                 <TabItem.Resources>
                     <Style TargetType="ListItem">
                         <Setter Property="Margin" Value="0,0,10,10"/>
@@ -175,6 +175,13 @@
                         </Paragraph>
                         <Paragraph FontSize="20">本软件使用以下组件：</Paragraph>
                         <List>
+                            <ListItem>
+                                <Paragraph>
+                                    <Span>SQLite</Span>
+                                    <LineBreak />
+                                    <Hyperlink NavigateUri="http://www.sqlite.org">http://www.sqlite.org</Hyperlink>
+                                </Paragraph>
+                            </ListItem>
                             <ListItem>
                                 <Paragraph>
                                     <Span>MahApps.Metro</Span>
@@ -240,6 +247,47 @@ software without specific prior written permission.
                         </List>
                     </FlowDocument>
                 </FlowDocumentScrollViewer>
+            </TabItem>
+            <TabItem Name="OnlineUpdateTab" Header="在线更新" controls:ControlsHelper.HeaderFontSize="20">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"></RowDefinition>
+                        <RowDefinition Height="Auto"></RowDefinition>
+                        <RowDefinition Height="*"></RowDefinition>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition></ColumnDefinition>
+                        <ColumnDefinition></ColumnDefinition>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal">
+                        <TextBlock VerticalAlignment="Center" FontSize="20" Margin="10,0,10,0">当前版本:</TextBlock>
+                        <TextBlock Name="CurrentVersionBlock" VerticalAlignment="Center" FontSize="20" Margin="10,0,10,0" />
+                        <Button Name="CheckUpdateButton" VerticalAlignment="Center" FontSize="20" Margin="30,0,10,0" Width="120" Click="CheckUpdate_OnClick">检查更新</Button>
+                        <controls:ProgressRing Name="CheckupdateRing" Visibility="Collapsed" IsActive="True" Width="35" Height="35" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBlock Name="UpdateStatusBlock" Grid.Row="0" Grid.Column="1" Margin="20,0,0,0" FontSize="20" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Row="1" Grid.Column="0" Visibility="Hidden" Name="UpdateSummaryPanel">
+                        <StackPanel Orientation="Horizontal" Margin="0,30,0,0">
+                            <TextBlock VerticalAlignment="Center" FontSize="20" Margin="10,0,10,0">最新版本:</TextBlock>
+                            <TextBlock Name="NewVersionNumberBlock" VerticalAlignment="Center" FontSize="20" Margin="10,0,10,0">2.1.0.0</TextBlock>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                            <TextBlock VerticalAlignment="Center" FontSize="20" Margin="10,0,10,0">下载大小:</TextBlock>
+                            <TextBlock Name="UpdatePackageSize" VerticalAlignment="Center" FontSize="20" Margin="10,0,10,0" />
+                        </StackPanel>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Grid.Column="1" Width="350" HorizontalAlignment="Left" Margin="0,30,0,0" Visibility="Hidden" Name="UpdateControlPanel">
+                        <Button FontSize="20" Click="Download_OnClick" Name="DownloadButton">下载并在下次启动时自动更新</Button>
+                        <ProgressBar Name="DownloadProgress" Margin="0,10,0,0" Visibility="Hidden" />
+                    </StackPanel>
+                    <FlowDocumentScrollViewer Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" VerticalScrollBarVisibility="Auto" Margin="0,20,0,0" Visibility="Hidden" Name="UpdateDescription">
+                        <FlowDocument>
+                            <Paragraph>
+                                <Run Name="UpdateDescRun" xml:space="preserve"/>
+                            </Paragraph>
+                        </FlowDocument>
+                    </FlowDocumentScrollViewer>
+                </Grid>
             </TabItem>
         </TabControl>
     </DockPanel>

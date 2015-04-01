@@ -1,0 +1,5 @@
+﻿cd 到deployment目录
+若只需更新TGFCSpiderman.exe，运行msbuild即可，不带参数。
+若dll或其他文件有增加或改动，需指定： MSBuild /p:updated_files="CsQuery.dll;HelloWorld.dll;Testme.config"
+打开publish_bin目录，将latest_version.txt上传github
+在github上手动添加release，命名规则为r_主版本号.次版本号,如r_1.7，上传full.zip和update.zip。

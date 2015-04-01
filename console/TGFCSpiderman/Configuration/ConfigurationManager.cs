@@ -10,9 +10,7 @@ namespace taiyuanhitech.TGFCSpiderman.Configuration
 
         public ConfigurationManager()
         {
-            var applicationName = Environment.GetCommandLineArgs()[0];
-            var exePath = System.IO.Path.Combine(Environment.CurrentDirectory, applicationName);
-            _config = System.Configuration.ConfigurationManager.OpenExeConfiguration(exePath);
+            _config = System.Configuration.ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
         }
 
         public IPageFetcherConfig GetPageFetcherConfig()
@@ -59,15 +57,49 @@ namespace taiyuanhitech.TGFCSpiderman.Configuration
             var configSection = (TGFCSpidermanSection)_config.GetSection(SectionName);
             if (configSection == null)
             {
-                configSection = new TGFCSpidermanSection();
-                configSection.AuthElement.UserName = c.UserName;
-                configSection.AuthElement.AuthToken = c.AuthToken;
+                configSection = new TGFCSpidermanSection
+                {
+                    AuthElement = {UserName = c.UserName, AuthToken = c.AuthToken}
+                };
                 _config.Sections.Add(SectionName, configSection);
             }
             else
             {
                 configSection.AuthElement.UserName = c.UserName;
                 configSection.AuthElement.AuthToken = c.AuthToken;
+            }
+
+            _config.Save(ConfigurationSaveMode.Modified);
+            System.Configuration.ConfigurationManager.RefreshSection(SectionName);
+        }
+
+        internal OnlineUpdateConfigElement GetOnlineUpdateConfig()
+        {
+            var section = (TGFCSpidermanSection)_config.GetSection(SectionName);
+            return section != null ? section.OnlineUpdateElement : new OnlineUpdateConfigElement { CheckUpdateUrl = OnlineUpdateConfigElement.DefaultUrl };
+        }
+
+        internal PendingUpdateElement GetPendingUpdateElement()
+        {
+            var section = (TGFCSpidermanSection)_config.GetSection(SectionName);
+            return section == null ? null : section.PendingUpdateElement;
+        }
+
+        internal void SavePendingUpdate(string dir, string ver)
+        {
+            var configSection = (TGFCSpidermanSection)_config.GetSection(SectionName);
+            if (configSection == null)
+            {
+                configSection = new TGFCSpidermanSection
+                {
+                    PendingUpdateElement = { Dir = dir, Ver = ver}
+                };
+                _config.Sections.Add(SectionName, configSection);
+            }
+            else
+            {
+                configSection.PendingUpdateElement.Dir = dir;
+                configSection.PendingUpdateElement.Ver = ver;
             }
 
             _config.Save(ConfigurationSaveMode.Modified);

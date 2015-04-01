@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Windows;
 using taiyuanhitech.TGFCSpiderman.CommonLib;
+using taiyuanhitech.TGFCSpiderman.Configuration;
 
 namespace taiyuanhitech.TGFCSpiderman
 {
@@ -27,12 +29,32 @@ namespace taiyuanhitech.TGFCSpiderman
             }
         }
 
+        internal OnlineUpdate.UpdateInfo NewUpdateInfo { get; set; }
+
         protected override void OnStartup(StartupEventArgs e)
         {
             if (!AppMutex.WaitOne(TimeSpan.Zero, true))
             {
                 MessageBox.Show("已经有一个在运行了，不能多开。");
                 Current.Shutdown();
+            }
+            var config = new ConfigurationManager();
+            var pendingUpdate = config.GetPendingUpdateElement();
+            if (pendingUpdate != null && !string.IsNullOrEmpty(pendingUpdate.Dir))
+            {
+                var p = new Process
+                {
+                    StartInfo =
+                    {
+                        FileName = "TGSUpdater.exe",
+                        Arguments = string.Format("\"{0}\" {1}", pendingUpdate.Dir, pendingUpdate.Ver),
+                        UseShellExecute = true
+                    }
+                };
+                config.SavePendingUpdate("","");
+                p.Start();
+                Current.Shutdown();
+                return;
             }
             base.OnStartup(e);
             ComponentFactory.Startup();

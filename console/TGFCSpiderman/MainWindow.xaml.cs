@@ -1,15 +1,16 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Threading;
 using NLog;
 using taiyuanhitech.TGFCSpiderman.CommonLib;
 using taiyuanhitech.TGFCSpiderman.Configuration;
+using taiyuanhitech.TGFCSpiderman.OnlineUpdate;
 using taiyuanhitech.TGFCSpiderman.ViewModel;
 
 namespace taiyuanhitech.TGFCSpiderman
@@ -52,7 +53,7 @@ namespace taiyuanhitech.TGFCSpiderman
                 Password.Password = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
                 Login.Content = "退出";
             }
-            VersionRun.Text = GetVersionInfo();
+            VersionRun.Text = CurrentVersionBlock.Text = GetVersionInfo();
         }
 
         protected override void OnClosed(EventArgs e)
@@ -62,6 +63,23 @@ namespace taiyuanhitech.TGFCSpiderman
             {
                 _taskManager.Stop();
             }
+        }
+
+        protected override void OnContentRendered(EventArgs e)
+        {
+            base.OnContentRendered(e);
+            var checkUpdateTask = OnlineUpdateManager.GetUpdateInfoAsync();
+            checkUpdateTask.ContinueWith(t =>
+            {
+                var updateInfo = t.Result;
+                if (updateInfo == null)
+                    return;
+                if (App.CurrentApp.NewUpdateInfo == null || App.CurrentApp.NewUpdateInfo.NewVersion != t.Result.NewVersion)
+                {
+                    App.CurrentApp.NewUpdateInfo = updateInfo;
+                    Dispatcher.InvokeAsync(() => ShowUpdateInfo(updateInfo));
+                }
+            });
         }
 
         private async void Signin_OnClick(object sender, RoutedEventArgs e)
@@ -305,10 +323,88 @@ namespace taiyuanhitech.TGFCSpiderman
             if (null == cb.SelectedValue)
                 cb.SelectedIndex = 0;
         }
-        private string GetVersionInfo()
+        private static string GetVersionInfo()
         {
-            var obj = Assembly.GetExecutingAssembly().GetName().Version;
-            return string.Format("V{0}.{1}", obj.Major, obj.Minor);
+            return OnlineUpdateManager.GetCurrentVersion().ToString();
+        }
+
+        private async void CheckUpdate_OnClick(object sender, RoutedEventArgs e)
+        {
+            CheckUpdateButton.IsEnabled = false;
+            CheckupdateRing.Visibility = Visibility.Visible;
+
+            try
+            {
+                var updateInfo = await OnlineUpdateManager.GetUpdateInfoAsync();
+                if (updateInfo == null)
+                {
+                    UpdateStatusBlock.Text = "已经是最新版本，无需更新。";
+                }
+                else
+                {
+                    if (App.CurrentApp.NewUpdateInfo == null || App.CurrentApp.NewUpdateInfo.NewVersion != updateInfo.NewVersion)
+                    {
+                        App.CurrentApp.NewUpdateInfo = updateInfo;
+                        ShowUpdateInfo(updateInfo);
+                    }
+                }
+            }
+            catch
+            {
+                MessageBox.Show("检查更新时出现错误，请稍候重试。");
+            }
+            finally
+            {
+                CheckupdateRing.Visibility = Visibility.Collapsed;
+                CheckUpdateButton.IsEnabled = true;
+            }
+        }
+
+        private void ShowUpdateInfo(UpdateInfo updateInfo)
+        {
+            OnlineUpdateTab.Header = "立即更新";
+            UpdateStatusBlock.Text = "发现新版本。";
+            UpdateDescRun.Text = updateInfo.Description;
+            NewVersionNumberBlock.Text = updateInfo.NewVersion.ToString();
+            UpdatePackageSize.Text = GetHumanReadableSize(updateInfo.UpdatePackageSize);
+            UpdateSummaryPanel.Visibility = UpdateControlPanel.Visibility = UpdateDescription.Visibility = Visibility.Visible;
+        }
+
+        private static string GetHumanReadableSize(int b)
+        {
+            if (b < 1024000)
+                return (b / 1024f).ToString("0.00") + " KB";
+
+            return (b / 1024f / 1024f).ToString("0.00") + " MB";
+        }
+
+        private async void Download_OnClick(object sender, RoutedEventArgs e)
+        {
+            if (App.CurrentApp.NewUpdateInfo == null)
+                return;
+
+            CheckUpdateButton.IsEnabled = false;
+            DownloadButton.IsEnabled = false;
+            DownloadProgress.Visibility = Visibility.Visible;
+            try
+            {
+                await OnlineUpdateManager.SetupUpdateAsync(App.CurrentApp.NewUpdateInfo, new Progress<DownloadProgress>(d =>
+                        {
+                            Dispatcher.InvokeAsync(() => DownloadProgress.Value = d.CompletedPercentage,
+                                DispatcherPriority.Normal);
+                            UpdateStatusBlock.Text = d.Status;
+                        }));
+                UpdateStatusBlock.Text = "准备就绪，下次启动时将会自动更新。";
+            }
+            catch
+            {
+                UpdateStatusBlock.Text = "准备更新过程中发生错误，请重试。";
+                DownloadButton.IsEnabled = true;
+            }
+            finally
+            {
+                CheckUpdateButton.IsEnabled = true;
+            }
         }
     }
 
