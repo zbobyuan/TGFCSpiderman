@@ -4,7 +4,7 @@ namespace taiyuanhitech.TGFCSpiderman.Configuration
 {
     class OnlineUpdateConfigElement : ConfigurationElement
     {
-        internal const string DefaultUrl = "https://github.com/zbobyuan/TGFCSpiderman/raw/master/console/lastest_release.txt";
+        internal const string DefaultUrl = "https://github.com/zbobyuan/TGFCSpiderman/raw/master/console/latest_release.txt";
         [ConfigurationProperty("checkUpdateUrl", IsRequired = false, DefaultValue = DefaultUrl)]
         public string CheckUpdateUrl
         {
