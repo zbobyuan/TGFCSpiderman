@@ -62,4 +62,4 @@
 #*.rtf   diff=astextplain
 #*.RTF   diff=astextplain
 
-console\latest_release.txt text eol=crlf
+console/latest_release.txt text eol=crlf
