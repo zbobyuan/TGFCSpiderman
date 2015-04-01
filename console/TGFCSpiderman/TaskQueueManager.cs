@@ -356,7 +356,7 @@ namespace taiyuanhitech.TGFCSpiderman
             if (header.ReplyCount == -1)//somehow replycount is unknown
                 return 9999;
 
-            const int postsPerPage = 100;
+            const int postsPerPage = 30;
             return header.ReplyCount / postsPerPage + 1;
         }
 

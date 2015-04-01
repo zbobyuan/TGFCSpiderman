@@ -49,7 +49,7 @@ namespace taiyuanhitech.TGFCSpiderman
             var root = CQ.CreateDocument(request.HtmlContent);
             EnsureSignedIn(root, request);
 
-            var body = root.Select("div.wrap:first > div:eq(1)").FirstElement();
+            var body = root.Select("div.navbar:first ~ div:first").FirstElement();
             if (body == null || body.HasAttributes)
                 throw new ProcessFaultException(request, "无法定位包含内容的div元素");
             var bodyCq = body.Cq();
