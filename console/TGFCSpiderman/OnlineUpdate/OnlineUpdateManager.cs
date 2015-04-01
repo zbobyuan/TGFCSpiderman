@@ -1,4 +1,7 @@
-﻿using Ionic.Zip;
+﻿using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
+using Ionic.Zip;
 using System;
 using System.IO;
 using System.Linq;
@@ -14,8 +17,8 @@ namespace taiyuanhitech.TGFCSpiderman.OnlineUpdate
         public Version NewVersion { get; set; }
         public int UpdatePackageSize { get; set; }
         public string DownloadUrl { get; set; }
-
-        public string Desctription { get; set; }
+        public string UpdatePackageHash { get; set; }
+        public string Description { get; set; }
     }
 
     internal sealed class DownloadProgress
@@ -40,37 +43,95 @@ namespace taiyuanhitech.TGFCSpiderman.OnlineUpdate
         {
             using (var httpClient = new HttpClient())
             {
-                var updateInfoStream = await httpClient.GetStreamAsync(GetUpdateUrl());
-                using (var reader = new StreamReader(updateInfoStream))
+                var response = await httpClient.GetStringAsync(GetUpdateUrl());
+                var updateInfoAndSignature = Regex.Split(response, @"(?:\r\n){2}");
+                var updateInfo = updateInfoAndSignature[0];
+                var signature = updateInfoAndSignature[1];
+
+                return VerifySignature(updateInfo, signature) ? GetUpdateInfoFromText(updateInfo) : null;
+            }
+        }
+
+        public static bool VerifySignature(string text, string signature)
+        {
+            string publicKeyXml;
+            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("taiyuanhitech.TGFCSpiderman.pk.xml"))
+            using (var reader = new StreamReader(stream))
+            {
+                publicKeyXml = reader.ReadToEnd();
+            }
+            var csp = new RSACryptoServiceProvider();
+            csp.FromXmlString(publicKeyXml);
+
+            var data = Encoding.UTF8.GetBytes(text);
+            var hash = new SHA1Managed().ComputeHash(data);
+            return csp.VerifyHash(hash, CryptoConfig.MapNameToOID("SHA1"), StringToByteArray(signature));
+        }
+
+        public static UpdateInfo GetUpdateInfoFromText(string text)
+        {
+            var update = new UpdateInfo();
+            using (var reader = new StringReader(text))
+            {
+                for (var i = 0; ; i++)
                 {
-                    var lineIndex = 0;
-                    var update = new UpdateInfo();
-                    while (!reader.EndOfStream)
+                    switch (i)
                     {
-                        switch (lineIndex)
-                        {
-                            case 0:
-                                // ReSharper disable once AssignNullToNotNullAttribute
-                                var newVersion = new Version(reader.ReadLine());
-                                if (newVersion <= GetCurrentVersion())
-                                    return null;
-                                update.NewVersion = newVersion;
-                                break;
-                            case 1:
-                                update.UpdatePackageSize = int.Parse(reader.ReadLine());
-                                break;
-                            case 2:
-                                update.DownloadUrl = reader.ReadLine();
-                                break;
-                            default:
-                                update.Desctription = reader.ReadToEnd();
-                                break;
-                        }
-                        lineIndex++;
+                        case 0:
+                            // ReSharper disable once AssignNullToNotNullAttribute
+                            var newVersion = new Version(reader.ReadLine());
+                            if (newVersion <= GetCurrentVersion())
+                                return null;
+                            update.NewVersion = newVersion;
+                            break;
+                        case 1:
+                            update.UpdatePackageSize = int.Parse(reader.ReadLine());
+                            break;
+                        case 2:
+                            update.DownloadUrl = reader.ReadLine();
+                            break;
+                        case 3:
+                            update.UpdatePackageHash = reader.ReadLine();
+                            break;
+                        default:
+                            update.Description = reader.ReadToEnd();
+                            return update;
                     }
-                    return update;
                 }
             }
+        }
+
+        private static string ByteArrayToString(byte[] buffer)
+        {
+            var sb = new StringBuilder();
+            foreach (var b in buffer)
+                sb.Append(b.ToString("X2"));
+
+            return (sb.ToString());
+        }
+
+        private static byte[] StringToByteArray(string hex)
+        {
+            hex = hex.Trim();
+            var numberChars = hex.Length;
+            var bytes = new byte[numberChars / 2];
+            for (var i = 0; i < numberChars; i += 2)
+                bytes[i / 2] = Convert.ToByte(hex.Substring(i, 2), 16);
+
+            return bytes;
+        }
+        public static byte[] ComputeHash(string fileName)
+        {
+            using (var fs = new FileStream(fileName, FileMode.Open, FileAccess.Read))
+            {
+                return new SHA256CryptoServiceProvider().ComputeHash(fs);
+            }
+        }
+
+        public static bool VerifyHash(string fileName, string hash)
+        {
+            var newHash = ByteArrayToString(ComputeHash(fileName));
+            return newHash == hash;
         }
 
         public static async Task SetupUpdateAsync(UpdateInfo updateInfo, IProgress<DownloadProgress> progress)
@@ -86,8 +147,12 @@ namespace taiyuanhitech.TGFCSpiderman.OnlineUpdate
             {
                 await DownLoadUpdatePackageAsync(updateInfo, fileStream, progress);
             }
+            progress.Report(new DownloadProgress(80, "正在验证"));
+            if (!VerifyHash(saveFileName, updateInfo.UpdatePackageHash))
+            {
+                throw new Exception("验证错误");
+            }
             progress.Report(new DownloadProgress(90, "正在解压"));
-            //TODO:解压之前确认下载的文件是合法有效的，防止黑客篡改导致用户受损。使用RSA，发布前必须实现。
             var extractFolder = Path.Combine(saveFolder, Path.GetRandomFileName());
             await Task.Run(() =>
             {

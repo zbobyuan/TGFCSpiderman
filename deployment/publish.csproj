@@ -11,7 +11,7 @@
       <FilesInUpdateBall Include="$(updated_files)" /><!--updated_files comes from MSBuild command param: MSBuild /p:updated_files="CsQuery.dll;HelloWorld.dll;Testme.config"-->
   </ItemGroup>
   <Target Name="Publish">
-    <MSBuild Projects="$(TGFCSpidermanProjectDir)TGFCSpiderman.csproj" Properties="Configuration=Release" Targets="Clean;Build"/>
+    <MSBuild Projects="$(TGFCSpidermanProjectDir)TGFCSpiderman.csproj" Properties="Configuration=Release;Platform=AnyCPU" Targets="Clean;Build"/>
     <GetAssemblyIdentity AssemblyFiles="$(TGFCSpidermanProjectDir)bin\Release\TGFCSpiderman.exe">
       <Output TaskParameter="Assemblies" ItemName="AssemblyIdentitie"/>
     </GetAssemblyIdentity>
@@ -32,7 +32,11 @@
       <UpdateZipFiles Include="$(VersionDir)Publish\*.exe" />
       <UpdateZipFiles Include="$(VersionDir)Publish\%(FilesInUpdateBall.Identity)" Condition="'$(updated_files)' != ''"/>
     </ItemGroup>
+    <PropertyGroup>
+      <UpdateBallName>$(VersionDir)TGFCSpiderman_v%(AssemblyIdentitie.Version)_update.zip</UpdateBallName>
+    </PropertyGroup>
     <Zip Files="@(FullZipFiles)" ZipFileName="$(VersionDir)TGFCSpiderman_v%(AssemblyIdentitie.Version)_full.zip" Flatten="true" />
-    <Zip Files="@(UpdateZipFiles)" ZipFileName="$(VersionDir)TGFCSpiderman_v%(AssemblyIdentitie.Version)_update.zip" Flatten="true" />
+    <Zip Files="@(UpdateZipFiles)" ZipFileName="$(UpdateBallName)" Flatten="true" />
+    <Exec Command="publish_tool.exe %(AssemblyIdentitie.Version) $(UpdateBallName)" />
   </Target>
 </Project>

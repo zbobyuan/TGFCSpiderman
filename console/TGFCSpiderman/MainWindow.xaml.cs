@@ -72,6 +72,8 @@ namespace taiyuanhitech.TGFCSpiderman
             checkUpdateTask.ContinueWith(t =>
             {
                 var updateInfo = t.Result;
+                if (updateInfo == null)
+                    return;
                 if (App.CurrentApp.NewUpdateInfo == null || App.CurrentApp.NewUpdateInfo.NewVersion != t.Result.NewVersion)
                 {
                     App.CurrentApp.NewUpdateInfo = updateInfo;
@@ -362,7 +364,7 @@ namespace taiyuanhitech.TGFCSpiderman
         {
             OnlineUpdateTab.Header = "立即更新";
             UpdateStatusBlock.Text = "发现新版本。";
-            UpdateDescRun.Text = updateInfo.Desctription;
+            UpdateDescRun.Text = updateInfo.Description;
             NewVersionNumberBlock.Text = updateInfo.NewVersion.ToString();
             UpdatePackageSize.Text = GetHumanReadableSize(updateInfo.UpdatePackageSize);
             UpdateSummaryPanel.Visibility = UpdateControlPanel.Visibility = UpdateDescription.Visibility = Visibility.Visible;
@@ -380,7 +382,6 @@ namespace taiyuanhitech.TGFCSpiderman
         {
             if (App.CurrentApp.NewUpdateInfo == null)
                 return;
-
 
             CheckUpdateButton.IsEnabled = false;
             DownloadButton.IsEnabled = false;
