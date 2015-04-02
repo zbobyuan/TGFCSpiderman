@@ -5,13 +5,17 @@
   </PropertyGroup>
   <Import Project="MSBuild.Community.Tasks.Targets"/>
   <PropertyGroup>
-    <TGFCSpidermanProjectDir>..\console\TGFCSpiderman\</TGFCSpidermanProjectDir>
+    <SolutionDir>..\console</SolutionDir>
+    <TGFCSpidermanProjectDir>$(SolutionDir)\TGFCSpiderman\</TGFCSpidermanProjectDir>
+    <UpdaterProjectDir>$(SolutionDir)\Updater\</UpdaterProjectDir>
   </PropertyGroup>
   <ItemGroup>
       <FilesInUpdateBall Include="$(updated_files)" /><!--updated_files comes from MSBuild command param: MSBuild /p:updated_files="CsQuery.dll;HelloWorld.dll;Testme.config"-->
+      <ProjectToBuild Include="$(TGFCSpidermanProjectDir)TGFCSpiderman.csproj" />
+      <ProjectToBuild Include="$(UpdaterProjectDir)Updater.csproj" />
   </ItemGroup>
   <Target Name="Publish">
-    <MSBuild Projects="$(TGFCSpidermanProjectDir)TGFCSpiderman.csproj" Properties="Configuration=Release;Platform=AnyCPU" Targets="Clean;Build"/>
+    <MSBuild Projects="@(ProjectToBuild)" Properties="Configuration=Release;Platform=AnyCPU" Targets="Clean;Build"/>
     <GetAssemblyIdentity AssemblyFiles="$(TGFCSpidermanProjectDir)bin\Release\TGFCSpiderman.exe">
       <Output TaskParameter="Assemblies" ItemName="AssemblyIdentitie"/>
     </GetAssemblyIdentity>
@@ -21,15 +25,18 @@
     <RemoveDir Directories="$(VersionDir)Release" Condition="Exists('$(VersionDir)Release')" />
     <MakeDir Directories="$(VersionDir)Release"/>
     <Exec Command="copy $(TGFCSpidermanProjectDir)bin\Release\*.* $(VersionDir)Release"/>
+    <Exec Command="copy $(UpdaterProjectDir)bin\Release\TGSUpdater.exe $(VersionDir)Release"/>
     <RemoveDir Directories="$(VersionDir)Publish" Condition="Exists('$(VersionDir)Publish')" />
     <MakeDir Directories="$(VersionDir)Publish"/>
     <Exec Command="copy $(VersionDir)Release\*.dll $(VersionDir)Publish"/>
-    <Exec Command="copy $(VersionDir)Release\*.exe $(VersionDir)Publish"/>
-    <Exec Command="copy $(VersionDir)Release\*.config $(VersionDir)Publish"/>
+    <Exec Command="copy $(VersionDir)Release\TGFCSpiderman.exe $(VersionDir)Publish"/>
+    <Exec Command="copy $(VersionDir)Release\TGSUpdater.exe $(VersionDir)Publish"/>
+    <Exec Command="copy $(VersionDir)Release\TGFCSpiderman.exe.config $(VersionDir)Publish"/>
+    <Exec Command="copy $(VersionDir)Release\NLog.config $(VersionDir)Publish"/>
     <Exec Command="copy $(VersionDir)Release\*.sqlite $(VersionDir)Publish"/>
     <ItemGroup>
       <FullZipFiles Include="$(VersionDir)Publish\*.*" />
-      <UpdateZipFiles Include="$(VersionDir)Publish\*.exe" />
+      <UpdateZipFiles Include="$(VersionDir)Publish\TGFCSpiderman.exe" />
       <UpdateZipFiles Include="$(VersionDir)Publish\%(FilesInUpdateBall.Identity)" Condition="'$(updated_files)' != ''"/>
     </ItemGroup>
     <PropertyGroup>

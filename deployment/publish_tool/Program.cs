@@ -39,17 +39,17 @@ namespace publish_tool
             var updateInfo = File.ReadAllLines(fileToOpen, Encoding.UTF8);
             var updateBall = new FileInfo(updateBallPath);
             var fileSize = updateBall.Length;
-            var updateInfoFileName = Path.Combine(updateBall.DirectoryName, "lastest_release.txt");
+            var updateInfoFileName = Path.Combine(updateBall.DirectoryName, "latest_release.txt");
 
             var sb = new StringBuilder();
-            sb.AppendLine(version.ToString());
-            sb.AppendLine(fileSize.ToString());
-            sb.AppendFormat("https://github.com/zbobyuan/TGFCSpiderman/releases/download/r_{0}.{1}/{2}{3}", version.Major, version.Minor, updateBall.Name, Environment.NewLine);
-            sb.AppendLine(ByteArrayToString(ComputeHash(updateBallPath)));
+            sb.AppendFormat("{0}\n", version);
+            sb.Append(fileSize + "\n");
+            sb.AppendFormat("https://github.com/zbobyuan/TGFCSpiderman/releases/download/r_{0}.{1}/{2}\n", version.Major, version.Minor, updateBall.Name);
+            sb.Append(ByteArrayToString(ComputeHash(updateBallPath)) + "\n");
             foreach (var u in updateInfo)
             {
                 if (!u.StartsWith("#"))
-                    sb.AppendLine(u);
+                    sb.Append(u + "\n");
             }
 
             var parms = new CspParameters(1)
@@ -64,9 +64,7 @@ namespace publish_tool
             var hash = new SHA1Managed().ComputeHash(data);
             var resultBytes = csp.SignHash(hash, CryptoConfig.MapNameToOID("SHA1"));
             var result = ByteArrayToString(resultBytes);
-
-            sb.AppendLine();
-            sb.Append(result);
+            sb.Append("\n" + result);
 
             using (var fileStream = File.OpenWrite(updateInfoFileName))
             {

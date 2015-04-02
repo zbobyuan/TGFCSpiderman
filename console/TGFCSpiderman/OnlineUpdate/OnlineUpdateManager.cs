@@ -43,8 +43,9 @@ namespace taiyuanhitech.TGFCSpiderman.OnlineUpdate
         {
             using (var httpClient = new HttpClient())
             {
+                httpClient.Timeout = TimeSpan.FromMilliseconds(60000);
                 var response = await httpClient.GetStringAsync(GetUpdateUrl());
-                var updateInfoAndSignature = Regex.Split(response, @"(?:\r\n){2}");
+                var updateInfoAndSignature = Regex.Split(response, @"(?:\n){2}");
                 var updateInfo = updateInfoAndSignature[0];
                 var signature = updateInfoAndSignature[1];
 
